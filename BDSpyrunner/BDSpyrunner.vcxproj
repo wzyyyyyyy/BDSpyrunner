@@ -59,8 +59,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClInclude Include="bdxcore.h" />
-    <ClInclude Include="Detours\include\detours.h" />
     <ClInclude Include="结构体.hpp" />
     <ClInclude Include="预编译头.h" />
   </ItemGroup>

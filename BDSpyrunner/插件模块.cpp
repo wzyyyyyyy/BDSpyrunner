@@ -102,8 +102,8 @@ static bool runcmd(string cmd) {
 		if (p_level) {
 			auto fr = [cmd]() {
 				pr("执行了" + cmd);
-				SymCall("??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@AEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
-					bool, VA, string)(p_spscqueue, cmd);
+				SymCall(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@AEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
+					VA, string)(p_spscqueue, cmd);
 			};
 			safeTick(fr);
 			return true;
@@ -113,7 +113,7 @@ static bool runcmd(string cmd) {
 }
 // 获取一个未被使用的基于时间秒数的id
 static unsigned getFormId() {
-	unsigned id = time(0) + rand();
+	unsigned id = (int)time(0) + rand();
 	do {
 		++id;
 	} while (id == 0 || fids[id]);
@@ -130,8 +130,8 @@ static unsigned sendForm(std::string uuid, std::string str)
 		if (playerSign[p]) {
 			VA tpk;
 			//ModalFormRequestPacket sec;
-			SymCall("?createPacket@MinecraftPackets@@SA?AV?$shared_ptr@VPacket@@@std@@W4MinecraftPacketIds@@@Z",
-				VA, VA*, int)(&tpk, 100);
+			SymCall(VA, "?createPacket@MinecraftPackets@@SA?AV?$shared_ptr@VPacket@@@std@@W4MinecraftPacketIds@@@Z",
+				VA*, int)(&tpk, 100);
 			*(VA*)(tpk + 40) = fid;
 			*(std::string*)(tpk + 48) = str;
 			p->sendPacket(tpk);
@@ -213,7 +213,6 @@ static PyObject* PyInit_mc(void) {
 // 插件载入
 void init() {
 	pr(u8"[插件]Python runner(测试版)加载成功");
-	pr(dlsym_real("?onPlayerJoined@ServerScoreboard@@UEAAXAEBVPlayer@@@Z"));
 	Py_LegacyWindowsStdioFlag = 1;
 	PyImport_AppendInittab("mc", &PyInit_mc); //增加一个模块
 	Py_Initialize();
@@ -254,8 +253,7 @@ THook(VA, "??0Level@@QEAA@AEBV?$not_null@V?$NonOwnerPointer@VSoundPlayerInterfac
 	return level;
 }
 // 玩家加载名字
-THook(VA,
-	"?onPlayerJoined@ServerScoreboard@@UEAAXAEBVPlayer@@@Z",
+THook(VA, "?onPlayerJoined@ServerScoreboard@@UEAAXAEBVPlayer@@@Z",
 	VA a1, Player* p) {
 	VA hret = original(a1, p);
 	//onlinePlayers[uuid] = pPlayer;
@@ -263,8 +261,7 @@ THook(VA,
 	return hret;
 }
 // 玩家离开游戏
-THook(void,
-	"?_onPlayerLeft@ServerNetworkHandler@@AEAAXPEAVServerPlayer@@_N@Z",
+THook(void, "?_onPlayerLeft@ServerNetworkHandler@@AEAAXPEAVServerPlayer@@_N@Z",
 	VA _this, Player* p, char v3) {
 	playerSign[p] = false;
 	playerSign.erase(p);
@@ -272,8 +269,7 @@ THook(void,
 	//onlinePlayers.erase(uuid);
 }
 // 玩家操作物品
-THook(bool,
-	"?useItemOn@GameMode@@UEAA_NAEAVItemStack@@AEBVBlockPos@@EAEBVVec3@@PEBVBlock@@@Z",
+THook(bool, "?useItemOn@GameMode@@UEAA_NAEAVItemStack@@AEBVBlockPos@@EAEBVVec3@@PEBVBlock@@@Z",
 	void* _this, ItemStack* item, BlockPos* bp, unsigned __int8 a4, void* v5, Block* b) {
 	Player* p = *(Player**)((VA)_this + 8);
 	getPlayerInfo(p);
@@ -304,13 +300,13 @@ THook(bool, "?mayPlace@BlockSource@@QEAA_NAEBVBlock@@AEBVBlockPos@@EPEAVActor@@_
 		short bid = bl->getBlockItemID();
 		string bn = bl->getBlockName();
 		getPlayerInfo(p);
-		CallAll(PlacedBlock, "{s:s,s:[f,f,f],s:i,s:s,s:i,s:[i,i,i]}",
-			"playername", pn,
-			"XYZ", pp->x, pp->y, pp->z,
-			"dimensionid", did,
-			"blockname", bn.c_str(),
-			"blockid", bid,
-			"position", bp->x, bp->y, bp->z
+		CallAll(PlacedBlock, "s",
+			//"playername", pn,
+			//"XYZ", pp->x, pp->y, pp->z,
+			//"dimensionid", did,
+			//"blockname", bn.c_str(),
+			//"blockid", bid,
+			"position"//, bp->x, bp->y, bp->z
 		);
 		RET(_this, b, bp, a4, p, _bool)
 	}

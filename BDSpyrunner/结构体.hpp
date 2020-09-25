@@ -2,7 +2,7 @@
 //-----------------------
 // 结构体定义
 //-----------------------
-#include "bdxcore.h"
+#include "预编译头.h"
 using namespace std;
 // 玩家坐标结构体
 struct Vec3 {
@@ -24,8 +24,8 @@ struct BlockLegacy {
 };
 struct Block {
 	BlockLegacy* getBlockLegacy() {
-		return SymCall("?getLegacyBlock@Block@@QEBAAEBVBlockLegacy@@XZ",
-			BlockLegacy*, Block*)(this);
+		return SymCall(BlockLegacy*,"?getLegacyBlock@Block@@QEBAAEBVBlockLegacy@@XZ",
+			 Block*)(this);
 	}
 };
 struct BlockPos {
@@ -33,27 +33,27 @@ struct BlockPos {
 };
 struct BlockSource {
 	Block* getBlock(BlockPos* bp) {
-		return SymCall("?getBlock@BlockSource@@QEBAAEBVBlock@@AEBVBlockPos@@@Z",
-			Block*, BlockSource*, BlockPos*)(this, bp);
+		return SymCall(Block*,"?getBlock@BlockSource@@QEBAAEBVBlock@@AEBVBlockPos@@@Z",
+			 BlockSource*, BlockPos*)(this, bp);
 	}
 };
 struct Actor {
 	// 获取生物名称信息
 	string getNameTag() {
-		return SymCall("?getNameTag@Actor@@UEBAAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@XZ",
-			string&, Actor*)(this);
+		return SymCall(string&,"?getNameTag@Actor@@UEBAAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@XZ",
+			 Actor*)(this);
 	}
 	// 获取生物当前所处维度ID
 	int getDimensionId() {
 		int dimensionId;
-		SymCall("?getDimensionId@Actor@@UEBA?AV?$AutomaticID@VDimension@@H@@XZ",
-			int&, Actor*, int*)(this, &dimensionId);
+		SymCall(int&,"?getDimensionId@Actor@@UEBA?AV?$AutomaticID@VDimension@@H@@XZ",
+			 Actor*, int*)(this, &dimensionId);
 		return dimensionId;
 	}
 	// 获取生物当前所在坐标
 	Vec3* getPos() {
-		return SymCall("?getPos@Actor@@UEBAAEBVVec3@@XZ",
-			Vec3*, Actor*)(this);
+		return SymCall(Vec3*,"?getPos@Actor@@UEBAAEBVVec3@@XZ",
+			 Actor*)(this);
 	}
 
 };
@@ -63,8 +63,8 @@ struct Mob : Actor {
 struct Player : Mob {
 	// 发送数据包
 	VA sendPacket(VA pkt) {
-		return SymCall("?sendNetworkPacket@ServerPlayer@@UEBAXAEAVPacket@@@Z",
-			VA, Player*, VA)(this, pkt);
+		return SymCall(VA,"?sendNetworkPacket@ServerPlayer@@UEBAXAEAVPacket@@@Z",
+			 Player*, VA)(this, pkt);
 	}
 };
 struct ItemStackBase {
@@ -123,19 +123,19 @@ public:
 struct ItemStack : ItemStackBase {
 	// 取物品ID
 	short getId() {
-		return SymCall("?getId@ItemStackBase@@QEBAFXZ",
-			short, ItemStack*)(this);
+		return SymCall(short,"?getId@ItemStackBase@@QEBAFXZ",
+			 ItemStack*)(this);
 	}
 	// 取物品特殊值
 	short getAuxValue() {
-		return SymCall("?getAuxValue@ItemStackBase@@QEBAFXZ",
-			short, ItemStack*)(this);
+		return SymCall(short,"?getAuxValue@ItemStackBase@@QEBAFXZ",
+			 ItemStack*)(this);
 	}
 	// 取物品名称
 	std::string getName() {
 		std::string str;
-		SymCall("?getName@ItemStackBase@@QEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@XZ",
-			__int64, ItemStack*, string*)(this, &str);
+		SymCall(__int64,"?getName@ItemStackBase@@QEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@XZ",
+			 ItemStack*, string*)(this, &str);
 		return str;
 	}
 	// 取容器内数量
