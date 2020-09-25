@@ -214,6 +214,7 @@ static PyObject* PyInit_mc(void) {
 void init() {
 	pr(u8"[插件]Python runner(测试版)加载成功");
 	Py_LegacyWindowsStdioFlag = 1;
+	Py_IsolatedFlag = 1;
 	PyImport_AppendInittab("mc", &PyInit_mc); //增加一个模块
 	Py_Initialize();
 	PyEval_InitThreads();
@@ -300,13 +301,13 @@ THook(bool, "?mayPlace@BlockSource@@QEAA_NAEBVBlock@@AEBVBlockPos@@EPEAVActor@@_
 		short bid = bl->getBlockItemID();
 		string bn = bl->getBlockName();
 		getPlayerInfo(p);
-		CallAll(PlacedBlock, "s",
-			//"playername", pn,
-			//"XYZ", pp->x, pp->y, pp->z,
-			//"dimensionid", did,
-			//"blockname", bn.c_str(),
-			//"blockid", bid,
-			"position"//, bp->x, bp->y, bp->z
+		CallAll(PlacedBlock, "{s:s,s:[f,f,f],s:i,s:s,s:i,s:[i,i,i]}",
+			"playername", pn,
+			"XYZ", pp->x, pp->y, pp->z,
+			"dimensionid", did,
+			"blockname", bn.c_str(),
+			"blockid", bid,
+			"position", bp->x, bp->y, bp->z
 		);
 		RET(_this, b, bp, a4, p, _bool)
 	}
