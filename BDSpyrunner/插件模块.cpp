@@ -1,5 +1,4 @@
 #include "预编译头.h"
-//#include "bdxcore.h"
 #include "结构体.hpp"
 #include "tick/tick.h"
 #include <thread>
@@ -102,8 +101,8 @@ static bool runcmd(string cmd) {
 		if (p_level) {
 			auto fr = [cmd]() {
 				pr("执行了" + cmd);
-				SymCall(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@AEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
-					VA, string)(p_spscqueue, cmd);
+				SYMCALL(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@AEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
+					p_spscqueue, cmd);
 			};
 			safeTick(fr);
 			return true;
@@ -130,8 +129,8 @@ static unsigned sendForm(std::string uuid, std::string str)
 		if (playerSign[p]) {
 			VA tpk;
 			//ModalFormRequestPacket sec;
-			SymCall(VA, "?createPacket@MinecraftPackets@@SA?AV?$shared_ptr@VPacket@@@std@@W4MinecraftPacketIds@@@Z",
-				VA*, int)(&tpk, 100);
+			SYMCALL(VA, "?createPacket@MinecraftPackets@@SA?AV?$shared_ptr@VPacket@@@std@@W4MinecraftPacketIds@@@Z",
+				&tpk, 100);
 			*(VA*)(tpk + 40) = fid;
 			*(std::string*)(tpk + 48) = str;
 			p->sendPacket(tpk);
@@ -188,7 +187,7 @@ static PyObject* api_setListener(PyObject* self, PyObject* args) {
 		case 4:AddArrayMember(PlacedBlock, func); break;
 		case 5:AddArrayMember(DestroyBlock, func); break;
 		}
-		//pr(PyObject_CallFunction(ServerCmd[0], "i", 64, "x"));
+		//pr(PyObject_CallFunction(PlacedBlock[0], "{i:s}", 64, "x"));
 
 	}
 	return Py_None;
@@ -214,7 +213,7 @@ static PyObject* PyInit_mc(void) {
 void init() {
 	pr(u8"[插件]Python runner(测试版)加载成功");
 	Py_LegacyWindowsStdioFlag = 1;
-	Py_IsolatedFlag = 1;
+	Py_DebugFlag = 1;
 	PyImport_AppendInittab("mc", &PyInit_mc); //增加一个模块
 	Py_Initialize();
 	PyEval_InitThreads();
@@ -302,7 +301,7 @@ THook(bool, "?mayPlace@BlockSource@@QEAA_NAEBVBlock@@AEBVBlockPos@@EPEAVActor@@_
 		string bn = bl->getBlockName();
 		getPlayerInfo(p);
 		CallAll(PlacedBlock, "{s:s,s:[f,f,f],s:i,s:s,s:i,s:[i,i,i]}",
-			"playername", pn,
+			"playername", pn.c_str(),
 			"XYZ", pp->x, pp->y, pp->z,
 			"dimensionid", did,
 			"blockname", bn.c_str(),
@@ -311,7 +310,7 @@ THook(bool, "?mayPlace@BlockSource@@QEAA_NAEBVBlock@@AEBVBlockPos@@EPEAVActor@@_
 		);
 		RET(_this, b, bp, a4, p, _bool)
 	}
-	return 0;
+	return original(_this, b, bp, a4, p, _bool);
 }
 // 玩家破坏方块
 THook(bool, "?_destroyBlockInternal@GameMode@@AEAA_NAEBVBlockPos@@E@Z",

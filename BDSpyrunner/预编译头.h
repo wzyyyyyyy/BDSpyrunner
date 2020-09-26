@@ -40,7 +40,14 @@ using Ptr = Type*;
 #define CLASS_OBJECT(TYPE, THISPTR, OFFSET)				DEREF(POINTER_ADD_OFFSET(Ptr<TYPE>, THISPTR, OFFSET))
 #define CLASS_VTABLE_OBJECT(TYPE, THISPTR, OFFSET)		DEREF(POINTER(Ptr<TYPE>, DEREF(POINTER(Ptr<VA>, THISPTR))+OFFSET))
 
-#define SymCall(ret,fn, ...)							((ret(*)(__VA_ARGS__))(dlsym_real(fn)))
+template<typename T_RET, typename... Args>
+T_RET Symcall(const char* sym, Args... args) {
+	using FnType = T_RET (*)(Args...);
+	FnType p = (FnType)dlsym_real(sym);
+	return p(args...);
+}
+#define SYMCALL(ret,fn, ...)							(Symcall<ret>(fn, ##__VA_ARGS__))
+//#define SymCall(ret,fn, ...)							((ret(*)(__VA_ARGS__))(dlsym_real(fn)))
 #define SYM_OBJECT(TYPE, SYM_RVA)						DEREF(POINTER_ADD_OFFSET(Ptr<TYPE>, GetModuleHandle(NULL), SYM_RVA))
 
 #include<string_view>

@@ -20,15 +20,4 @@
       <UniqueIdentifier>{99e61392-8d50-4da7-a485-087a00ff6429}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
-  <ItemGroup>
-    <Library Include="BDXCORE.lib">
-      <Filter>其它文件</Filter>
-    </Library>
-    <Library Include="Detours\lib.X64\detours.lib">
-      <Filter>其它文件</Filter>
-    </Library>
-    <Library Include="libs\python38.lib">
-      <Filter>其它文件</Filter>
-    </Library>
-  </ItemGroup>
 </Project>
