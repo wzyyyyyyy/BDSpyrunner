@@ -47,7 +47,7 @@ mc.setListener(1,func)
 ```py
 def a()
 	print('我是a')
-mc.setTimout(a,500)
+mc.setTimeout(a,500)
 ```
 # 已知问题
 	1.控制台编码问题(目前是mbcs)
