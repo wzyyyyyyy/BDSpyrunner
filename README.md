@@ -25,7 +25,7 @@ mc.log('hello')
 	此参数用来传数据,以字典形式传人
 	可print来查看
 	返回值决定是否拦截
-	1-控制台输入指令
+	1-控制台输入指令（事件中暂不能使用mc.runcmd，有bug）
 	2-控制台指令输出（无效）
 	3-玩家选择表单（无效）
 	4-玩家使用物品
@@ -47,7 +47,7 @@ mc.setListener(1,func)
 ```py
 def a()
 	print('我是a')
-mc.setTimout(a,500)
+mc.setTimeout(a,500)
 ```
 # 已知问题
 	1.控制台编码问题(目前是mbcs)
