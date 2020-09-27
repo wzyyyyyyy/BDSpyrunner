@@ -1,5 +1,4 @@
 #include "预编译头.h"
-//#include "bdxcore.h"
 #include "结构体.hpp"
 #include "tick/tick.h"
 #include <thread>
@@ -26,7 +25,8 @@
 #define getPlayerInfo(p) \
 	string pn = p->getNameTag();\
 	int did = p->getDimensionId();\
-	Vec3* pp = p->getPos()
+	Vec3* pp = p->getPos();\
+	BYTE st = p->isStand();
 using namespace std;
 //-----------------------
 // 全局变量
@@ -38,11 +38,16 @@ PyObject
 * FormSelected[MAX],
 * UseItem[MAX],
 * PlacedBlock[MAX],
-* DestroyBlock[MAX];
+* DestroyBlock[MAX],
+* StartOpenChest[MAX],
+* StartOpenBarrel[MAX],
+* StopOpenChest[MAX],
+* StopOpenBarrel[MAX],
+* SetSlot[MAX];
 static VA p_spscqueue = 0;
 static VA p_level = 0;
-static std::unordered_map<std::string, Player*> onlinePlayers;
-static std::unordered_map<Player*, bool> playerSign;
+static map<string, Player*> onlinePlayers;
+static map<Player*, bool> playerSign;
 static map<unsigned, bool> fids;
 //-----------------------
 // 函数定义
@@ -52,7 +57,7 @@ static bool checkIsPlayer(void* p) {
 	return playerSign[(Player*)p];
 }
 // UTF-8 转 GBK
-static std::string UTF8ToGBK(const char* strUTF8)
+static string UTF8ToGBK(const char* strUTF8)
 {
 	int len = MultiByteToWideChar(CP_UTF8, 0, strUTF8, -1, NULL, 0);
 	wchar_t* wszGBK = new wchar_t[len + 1];
@@ -67,9 +72,8 @@ static std::string UTF8ToGBK(const char* strUTF8)
 	if (szGBK) delete[] szGBK;
 	return strTemp;
 }
-
 // GBK 转 UTF-8
-static std::string GBKToUTF8(const char* strGBK)
+static string GBKToUTF8(const char* strGBK)
 {
 	std::string strOutUTF8 = "";
 	WCHAR* str1;
@@ -86,7 +90,6 @@ static std::string GBKToUTF8(const char* strGBK)
 	str2 = NULL;
 	return strOutUTF8;
 }
-
 // 添加数组成员
 void AddArrayMember(PyObject* arr[], PyObject* mem) {
 	for (int i = 0; i < 10; i++) {
@@ -101,9 +104,8 @@ static bool runcmd(string cmd) {
 	if (p_spscqueue != 0) {
 		if (p_level) {
 			auto fr = [cmd]() {
-				pr("执行了" + cmd);
-				SymCall(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@AEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
-					VA, string)(p_spscqueue, cmd);
+				SYMCALL(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@AEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
+					p_spscqueue, cmd);
 			};
 			safeTick(fr);
 			return true;
@@ -130,8 +132,8 @@ static unsigned sendForm(std::string uuid, std::string str)
 		if (playerSign[p]) {
 			VA tpk;
 			//ModalFormRequestPacket sec;
-			SymCall(VA, "?createPacket@MinecraftPackets@@SA?AV?$shared_ptr@VPacket@@@std@@W4MinecraftPacketIds@@@Z",
-				VA*, int)(&tpk, 100);
+			SYMCALL(VA, "?createPacket@MinecraftPackets@@SA?AV?$shared_ptr@VPacket@@@std@@W4MinecraftPacketIds@@@Z",
+				&tpk, 100);
 			*(VA*)(tpk + 40) = fid;
 			*(std::string*)(tpk + 48) = str;
 			p->sendPacket(tpk);
@@ -181,14 +183,20 @@ static PyObject* api_setListener(PyObject* self, PyObject* args) {
 	else
 	{
 		switch (m) {
-		case 0:AddArrayMember(ServerCmd, func); break;
-		case 1:AddArrayMember(ServerCmdOutput, func); break;
-		case 2:AddArrayMember(FormSelected, func); break;
-		case 3:AddArrayMember(UseItem, func); break;
-		case 4:AddArrayMember(PlacedBlock, func); break;
-		case 5:AddArrayMember(DestroyBlock, func); break;
+		case 1:AddArrayMember(ServerCmd, func); break;
+		case 2:AddArrayMember(ServerCmdOutput, func); break;
+		case 3:AddArrayMember(FormSelected, func); break;
+		case 4:AddArrayMember(UseItem, func); break;
+		case 5:AddArrayMember(PlacedBlock, func); break;
+		case 6:AddArrayMember(DestroyBlock, func); break;
+		case 7:AddArrayMember(StartOpenChest, func); break;
+		case 8:AddArrayMember(StartOpenBarrel, func); break;
+		case 9:AddArrayMember(StopOpenChest, func); break;
+		case 10:AddArrayMember(StopOpenBarrel, func); break;
+		case 11:AddArrayMember(SetSlot, func); break;
+		default: pr(u8"找不到此类监听!"); break;
 		}
-		//pr(PyObject_CallFunction(ServerCmd[0], "i", 64, "x"));
+		//pr(PyObject_CallFunction(StartOpenChest[0], "{i:s}", 64, "x"));
 
 	}
 	return Py_None;
@@ -214,6 +222,7 @@ static PyObject* PyInit_mc(void) {
 void init() {
 	pr(u8"[插件]Python runner(测试版)加载成功");
 	Py_LegacyWindowsStdioFlag = 1;
+	//Py_DebugFlag = 1;Py_UTF8Mode = 1;
 	Py_IsolatedFlag = 1;
 	PyImport_AppendInittab("mc", &PyInit_mc); //增加一个模块
 	Py_Initialize();
@@ -223,13 +232,18 @@ void init() {
 	//用于查找的句柄
 	long long handle;
 	struct _finddata64i32_t fileinfo;
+	FILE* f;
 	//第一次查找
 	handle = _findfirst64i32(inPath, &fileinfo);
 	do
 	{
 		Py_NewInterpreter();
 		cout << u8"读取Py文件:" << fileinfo.name << endl;
-		PyRun_SimpleString((string("exec(open(\"./py/") + fileinfo.name + string("\").read())")).c_str());
+		char fn[32] = "./py/";
+		strcat(fn, fileinfo.name);
+		f = fopen(fn, "rb");
+		PyRun_SimpleFileEx(f, fileinfo.name, 1);
+		//PyRun_SimpleString((string("exec(open(\"./py/") + fileinfo.name + string("\").read())")).c_str());
 	} while (!_findnext(handle, &fileinfo));
 	_findclose(handle);
 }
@@ -257,7 +271,7 @@ THook(VA, "??0Level@@QEAA@AEBV?$not_null@V?$NonOwnerPointer@VSoundPlayerInterfac
 THook(VA, "?onPlayerJoined@ServerScoreboard@@UEAAXAEBVPlayer@@@Z",
 	VA a1, Player* p) {
 	VA hret = original(a1, p);
-	//onlinePlayers[uuid] = pPlayer;
+	//onlinePlayers[uuid] = p;
 	playerSign[p] = true;
 	return hret;
 }
@@ -280,7 +294,7 @@ THook(bool, "?useItemOn@GameMode@@UEAA_NAEAVItemStack@@AEBVBlockPos@@EAEBVVec3@@
 	BlockLegacy* bl = b->getBlockLegacy();
 	short bid = bl->getBlockItemID();
 	string bn = bl->getBlockName();
-	CallAll(UseItem, "{s:s,s:[f,f,f],s:i,s:i,s:i,s:s,s:s,s:is:[i,i,i]}",
+	CallAll(UseItem, "{s:s,s:[f,f,f],s:i,s:i,s:i,s:s,s:s,s:is:[i,i,i],s:i}",
 		"playername", pn,
 		"XYZ", pp->x, pp->y, pp->z,
 		"dimensionid", did,
@@ -288,8 +302,9 @@ THook(bool, "?useItemOn@GameMode@@UEAA_NAEAVItemStack@@AEBVBlockPos@@EAEBVVec3@@
 		"itemaux", iaux,
 		"itemname", iname,
 		"blockname", bn.c_str(),
-		"blockid", bid,
-		"position", bp->x, bp->y, bp->z
+		"bid", bid,
+		"position", bp->x, bp->y, bp->z,
+		"isstand",st
 	);
 	RET(_this, item, bp, a4, v5, b)
 }
@@ -301,17 +316,18 @@ THook(bool, "?mayPlace@BlockSource@@QEAA_NAEBVBlock@@AEBVBlockPos@@EPEAVActor@@_
 		short bid = bl->getBlockItemID();
 		string bn = bl->getBlockName();
 		getPlayerInfo(p);
-		CallAll(PlacedBlock, "{s:s,s:[f,f,f],s:i,s:s,s:i,s:[i,i,i]}",
-			"playername", pn,
+		CallAll(PlacedBlock, "{s:s,s:[f,f,f],s:i,s:s,s:i,s:[i,i,i],s:i}",
+			"playername", pn.c_str(),
 			"XYZ", pp->x, pp->y, pp->z,
 			"dimensionid", did,
 			"blockname", bn.c_str(),
-			"blockid", bid,
-			"position", bp->x, bp->y, bp->z
+			"bid", bid,
+			"position", bp->x, bp->y, bp->z,
+			"isstand",st
 		);
 		RET(_this, b, bp, a4, p, _bool)
 	}
-	return 0;
+	return original(_this, b, bp, a4, p, _bool);
 }
 // 玩家破坏方块
 THook(bool, "?_destroyBlockInternal@GameMode@@AEAA_NAEBVBlockPos@@E@Z",
@@ -323,25 +339,130 @@ THook(bool, "?_destroyBlockInternal@GameMode@@AEAA_NAEBVBlockPos@@E@Z",
 	short bid = bl->getBlockItemID();
 	string bn = bl->getBlockName();
 	getPlayerInfo(p);
-	CallAll(DestroyBlock, "{s:s,s:[f,f,f],s:i,s:s,s:i,s:[i,i,i]}",
+	CallAll(DestroyBlock, "{s:s,s:[f,f,f],s:i,s:s,s:i,s:[i,i,i],s:i}",
 		"playername", pn,
 		"XYZ", pp->x, pp->y, pp->z,
 		"dimensionid", did,
 		"blockname", bn,
-		"blockid", bid,
-		"position", bp->x, bp->y, bp->z
+		"bid", bid,
+		"position", bp->x, bp->y, bp->z,
+		"isstand",st
 	);
 	RET(_this, bp)
 }
 // 控制台输入
 THook(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@AEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
 	VA _this, string* cmd) {
-	if (*cmd == "py\r") {
-		exit();
-		init();
-		return 0;
-	}
 	CallAll(ServerCmd, "{s:s}", "cmd", (*cmd).substr(0, (*cmd).length() - 1));
 	RET(_this, cmd)
 }
-
+// 玩家开箱准备
+THook(bool,"?use@ChestBlock@@UEBA_NAEAVPlayer@@AEBVBlockPos@@@Z",
+	void* _this, Player* p, BlockPos* bp) {
+	//BlockSource* bs = (BlockSource*)((Level*)p->getLevel())->getDimension(p->getDimensionId())->getBlockSouce();
+	//PyObject_CallFunction(StartOpenChest[0], "i", 64);
+	getPlayerInfo(p);
+	CallAll(StartOpenChest, "{s:s,s:[f,f,f],s:i,s:[i,i,i],s:i}",
+		"playername", pn,
+		"XYZ", pp->x, pp->y, pp->z,
+		"dimensionid", did,
+		"position", bp->x, bp->y, bp->z,
+		"isstand",1
+	);
+	RET(_this, p, bp);
+	//return original(_this, p, bp);
+}
+// 玩家开桶准备
+THook(bool,
+	"?use@BarrelBlock@@UEBA_NAEAVPlayer@@AEBVBlockPos@@@Z",
+	void* _this, Player* p, BlockPos* bp) {
+	//auto bs = (BlockSource*)((Level*)p->getLevel())->getDimension(p->getDimensionId())->getBlockSouce();
+	//auto b = bs->getBlock(bp);
+	getPlayerInfo(p);
+	//short bid = b->getBlockLegacy()->getBlockItemID();
+	CallAll(StartOpenBarrel, "{s:s,s:[f,f,f],s:i,s:[i,i,i],s:i}",
+		"playername", pn,
+		"XYZ", pp->x, pp->y, pp->z,
+		"dimensionid", did,
+		"position", bp->x, bp->y, bp->z,
+		"isstand",st
+	);
+	RET(_this, p, bp);
+}
+// 玩家关闭箱子
+THook(void,
+	"?stopOpen@ChestBlockActor@@UEAAXAEAVPlayer@@@Z",
+	void* _this, Player* p) {
+	auto real_this = reinterpret_cast<void*>(reinterpret_cast<VA>(_this) - 248);
+	auto bp = reinterpret_cast<BlockActor*>(real_this)->getPosition();
+	auto bs = (BlockSource*)((Level*)p->getLevel())->getDimension(p->getDimensionId())->getBlockSouce();
+	auto b = bs->getBlock(bp);
+	getPlayerInfo(p);
+	CallAll(StopOpenChest, "{s:s,s:[f,f,f],s:i,s:[i,i,i],s:i}",
+		"playername", pn,
+		"XYZ", pp->x, pp->y, pp->z,
+		"dimensionid", did,
+		"position", bp->x, bp->y, bp->z,
+		"isstand",st
+	);
+	return original(_this, p);
+}
+// 玩家关闭木桶
+THook(void,
+	"?stopOpen@BarrelBlockActor@@UEAAXAEAVPlayer@@@Z",
+	void* _this, Player* p) {
+	auto real_this = reinterpret_cast<void*>(reinterpret_cast<VA>(_this) - 248);
+	auto bp = reinterpret_cast<BlockActor*>(real_this)->getPosition();
+	auto bs = (BlockSource*)((Level*)p->getLevel())->getDimension(p->getDimensionId())->getBlockSouce();
+	auto b = bs->getBlock(bp);
+	getPlayerInfo(p);
+	CallAll(StopOpenBarrel, "{s:s,s:[f,f,f],s:i,s:[i,i,i],s:i}",
+		"playername", pn,
+		"XYZ", pp->x, pp->y, pp->z,
+		"dimensionid", did,
+		"position", bp->x, bp->y, bp->z,
+		"isstand",st
+	);
+	return original(_this,p);
+}
+// 玩家放入取出数量
+THook(void,
+	"?containerContentChanged@LevelContainerModel@@UEAAXH@Z",
+	LevelContainerModel* a1, VA slot) {
+	VA v3 = *((VA*)a1 + 26);				// IDA LevelContainerModel::_getContainer
+	BlockSource* bs = *(BlockSource**)(*(VA*)(v3 + 808) + 72);
+	BlockPos* bp = (BlockPos*)((char*)a1 + 216);
+	Block* b = bs->getBlock(bp);
+	short bid = b->getBlockLegacy()->getBlockItemID();
+	string bn = b->getBlockLegacy()->getBlockName();
+	if (bid == 54 || bid == 130 || bid == 146 || bid == -203 || bid == 205 || bid == 218) {	// 非箱子、桶、潜影盒的情况不作处理
+		VA v5 = (*(VA(**)(LevelContainerModel*))(*(VA*)a1 + 160))(a1);
+		if (v5) {
+			ItemStack* is = (ItemStack*)(*(VA(**)(VA, VA))(*(VA*)v5 + 40))(v5, slot);
+			auto iid = is->getId();
+			auto iaux = is->getAuxValue();
+			auto isize = is->getStackSize();
+			auto iname = string(is->getName());
+			auto p = a1->getPlayer();
+			getPlayerInfo(p);
+			CallAll(SetSlot, "{s:s,s:[f,f,f],s:i,s:s,s:i,s:[i,i,i],s:i,s:i,s:i,s:s,s:i,s:i}",
+				"playername", pn,
+				"XYZ", pp->x, pp->y, pp->z,
+				"dimensionid", did,
+				"blockname", bn,
+				"bid", bid,
+				"position", bp->x, bp->y, bp->z,
+				"isstand",st,
+				"itemid",iid,
+				"itemcount",isize,
+				"itemname",iname,
+				"itemaux",iaux,
+				"slot",slot
+			);
+		}
+		else
+			original(a1, slot);
+	}
+	else
+		original(a1, slot);
+}

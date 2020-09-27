@@ -3,6 +3,8 @@
 #include "预编译头.h"
 
 #pragma comment(lib, "./Detours/lib.X64/detours.lib")
+#pragma comment(lib, "./BDXCORE.lib")
+#pragma comment(lib, "./python38.lib")
 
 // 当使用预编译的头时，需要使用此源文件，编译才能成功。
 
