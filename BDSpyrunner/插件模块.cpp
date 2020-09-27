@@ -235,16 +235,19 @@ void init() {
 	FILE* f;
 	//第一次查找
 	handle = _findfirst64i32(inPath, &fileinfo);
-	do
-	{
-		Py_NewInterpreter();
-		cout << u8"读取Py文件:" << fileinfo.name << endl;
-		char fn[32] = "./py/";
-		strcat(fn, fileinfo.name);
-		f = fopen(fn, "rb");
-		PyRun_SimpleFileEx(f, fileinfo.name, 1);
-		//PyRun_SimpleString((string("exec(open(\"./py/") + fileinfo.name + string("\").read())")).c_str());
-	} while (!_findnext(handle, &fileinfo));
+	// 未找到插件不需要执行
+	if(handle != -1LL) {
+		do
+		{
+			Py_NewInterpreter();
+			cout << u8"读取Py文件:" << fileinfo.name << endl;
+			char fn[32] = "./py/";
+			strcat(fn, fileinfo.name);
+			f = fopen(fn, "rb");
+			PyRun_SimpleFileEx(f, fileinfo.name, 1);
+			//PyRun_SimpleString((string("exec(open(\"./py/") + fileinfo.name + string("\").read())")).c_str());
+		} while (!_findnext(handle, &fileinfo));
+	}
 	_findclose(handle);
 }
 // 插件卸载
