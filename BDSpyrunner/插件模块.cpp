@@ -10,11 +10,11 @@
 	PyObject* ret = 0;\
 	int res = -1;\
 	for(int i = 0;i<10;i++){\
-		if(PyCallable_Check(arr[i]))\
+		if(PyCallable_Check(arr[i])){\
 		ret = PyObject_CallFunction(arr[i],__VA_ARGS__);\
+		PyArg_Parse(ret, "p", &res);}\
 		else break;\
-	}\
-	PyArg_Parse(ret, "p", &res)
+	}
 //标准流输出信息
 #define pr(...) cout <<__VA_ARGS__<<endl
 //THook返回判断
@@ -355,6 +355,7 @@ THook(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$a
 	VA _this, string* cmd) {
 	CallAll(ServerCmd, "{s:s}", "cmd", (*cmd).substr(0, (*cmd).length() - 1));
 	RET(_this, cmd)
+	return original(_this, cmd);
 }
 // 玩家开箱准备
 THook(bool,"?use@ChestBlock@@UEBA_NAEAVPlayer@@AEBVBlockPos@@@Z",

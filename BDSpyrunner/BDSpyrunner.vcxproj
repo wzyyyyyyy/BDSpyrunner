@@ -72,8 +72,8 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Library Include="libs\chakra.lib" />
-    <Library Include="libs\python38.lib" />
+    <Library Include="chakra.lib" />
+    <Library Include="python38.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
