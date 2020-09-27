@@ -72,8 +72,7 @@
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <Library Include="BDXCORE.lib" />
-    <Library Include="Detours\lib.X64\detours.lib" />
+    <Library Include="libs\chakra.lib" />
     <Library Include="libs\python38.lib" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

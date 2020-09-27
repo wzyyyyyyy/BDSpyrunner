@@ -15,11 +15,12 @@
 #include <map>
 #include <set>
 #include <utility>
-// 微软 Detours 库 头文件
-#include "./Detours/include/detours.h"
+#include <stdio.h>
+#include <string>
+#include <string_view>
 extern "C" {
 	_declspec(dllimport) int HookFunction(void* oldfunc, void** poutold, void* newfunc);
-	_declspec(dllimport) void* dlsym_real(char const* name);
+	_declspec(dllimport) void* GetServerSymbol(char const* name);
 }
 //----------------------------------
 // 基本类型定义
@@ -28,27 +29,10 @@ using VA = unsigned __int64;
 using RVA = unsigned int;
 template<typename Type>
 using Ptr = Type*;
-//----------------------------------
-// 其他
-//----------------------------------
-#define REF(PTR)										(&PTR)
-#define DEREF(PTR)										(*PTR)
-#define OBJECT(TYPE, VALUE)								reinterpret_cast<TYPE>(VALUE)
-
-#define POINTER(PTR_TYPE, PTR)							OBJECT(PTR_TYPE, PTR)
-#define POINTER_ADD_OFFSET(TYPE, PTR, OFFSET)			POINTER(TYPE, POINTER(VA, PTR)+OFFSET)
-#define CLASS_OBJECT(TYPE, THISPTR, OFFSET)				DEREF(POINTER_ADD_OFFSET(Ptr<TYPE>, THISPTR, OFFSET))
-#define CLASS_VTABLE_OBJECT(TYPE, THISPTR, OFFSET)		DEREF(POINTER(Ptr<TYPE>, DEREF(POINTER(Ptr<VA>, THISPTR))+OFFSET))
-
-#define SymCall(ret,fn, ...)							((ret(*)(__VA_ARGS__))(dlsym_real(fn)))
-#define SYM_OBJECT(TYPE, SYM_RVA)						DEREF(POINTER_ADD_OFFSET(Ptr<TYPE>, GetModuleHandle(NULL), SYM_RVA))
-
-#include<string_view>
-using std::string_view;
 #define BKDR_MUL 131
 #define BKDR_ADD 0
 typedef unsigned long long CHash;
-constexpr CHash do_hash(string_view x) {
+constexpr CHash do_hash(std::string_view x) {
 	CHash rval = 0;
 	for (size_t i = 0; i < x.size(); ++i) {
 		rval *= BKDR_MUL;
@@ -57,7 +41,7 @@ constexpr CHash do_hash(string_view x) {
 	}
 	return rval;
 }
-constexpr CHash do_hash2(string_view x) {
+constexpr CHash do_hash2(std::string_view x) {
 	//ap hash
 	CHash rval = 0;
 	for (size_t i = 0; i < x.size(); ++i) {
@@ -87,6 +71,23 @@ inline const T& dAccess(void const* ptr, uintptr_t off) {
 	return *(T*)(((uintptr_t)ptr) + off);
 }
 #define __WEAK __declspec(selectany)
+
+#define SYM(x) GetServerSymbol(x)
+#define SymFn(ret, fn, ...) ((ret(*)(__VA_ARGS__))(SYM(fn)))
+
+template<typename T_RET, typename... Args>
+T_RET Symcall(const char* fn, Args... args) {
+	using FnType = T_RET(*)(Args...);
+	FnType p = (FnType)SYM(fn);
+	return p(args...);
+}
+#define SYMCALL(RETURN_TYPE, FN, ...) (Symcall<RETURN_TYPE>(FN, ##__VA_ARGS__))
+#define SymCall(ret,fn, ...) ((ret(*)(__VA_ARGS__))(SYM(fn)))
+
+#ifndef V8_ENV
+#define Call SymFn
+#endif // ! V8_ENV
+#define dlsym(xx) SYM(xx)
 class THookRegister {
 public:
 	THookRegister(void* address, void* hook, void** org) {
@@ -96,7 +97,7 @@ public:
 		}
 	}
 	THookRegister(char const* sym, void* hook, void** org) {
-		auto found = dlsym_real(sym);
+		auto found = GetServerSymbol(sym);
 		if (found == nullptr) {
 			printf("FailedToHook: %p\n", sym);
 		}
@@ -186,5 +187,4 @@ extern THookRegister THookRegisterTemplate;
 #define TClasslessInstanceHook(ret, sym, ...) TClasslessInstanceHook2(sym, ret, sym, VA_EXPAND(__VA_ARGS__))
 #define TInstanceHook2(iname, ret, sym, type, ...) _TInstanceDefHook(iname, sym, ret, type, VA_EXPAND(__VA_ARGS__))
 #define TInstanceHook(ret, sym, type, ...) TInstanceHook2(sym, ret, sym, type, VA_EXPAND(__VA_ARGS__))
-
 #endif //PCH_H
