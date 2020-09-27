@@ -12,9 +12,10 @@
 	for(int i = 0;i<10;i++){\
 		if(PyCallable_Check(arr[i])){\
 		ret = PyObject_CallFunction(arr[i],__VA_ARGS__);\
-		PyArg_Parse(ret, "p", &res);}\
+		}\
 		else break;\
-	}
+	}\
+	//PyArg_Parse(ret, "p", &res);
 //标准流输出信息
 #define pr(...) cout <<__VA_ARGS__<<endl
 //THook返回判断
