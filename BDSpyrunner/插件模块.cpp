@@ -55,6 +55,23 @@ static map<unsigned, bool> fids;
 //-----------------------
 // 函数定义
 //-----------------------
+// 清理所有事件
+void clearAllEvents() {
+	for (int i = 0; i < MAX; i++) {
+		ServerCmd[i] = NULL;
+		ServerCmdOutput[i] = NULL;
+		FormSelected[i] = NULL;
+		UseItem[i] = NULL;
+		PlacedBlock[i] = NULL;
+		DestroyBlock[i] = NULL;
+		StartOpenChest[i] = NULL;
+		StartOpenBarrel[i] = NULL;
+		StopOpenChest[i] = NULL;
+		StopOpenBarrel[i] = NULL;
+		SetSlot[i] = NULL;
+	}
+}
+
 // 判断指针是否为玩家列表中指针
 static bool checkIsPlayer(void* p) {
 	return playerSign[(Player*)p];
@@ -256,8 +273,8 @@ void init() {
 	_findclose(handle);
 }
 // 插件卸载
-void exit() {
-	Py_Finalize();
+int exit() {
+	return Py_FinalizeEx();
 }
 //-----------------------
 // THook列表
@@ -361,6 +378,14 @@ THook(bool, "?_destroyBlockInternal@GameMode@@AEAA_NAEBVBlockPos@@E@Z",
 // 控制台输入
 THook(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@AEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
 	VA _this, string* cmd) {
+	if (*cmd == "pyreload\r") {
+		int code = exit();
+		clearAllEvents();
+		std::cout << "pyr stoped(" << code << ")" << std::endl;
+		init();
+		std::cout << "pyr reload successed" << std::endl;
+		return 0;
+	}
 	// 插件指令不触发
 	if (runningCommandCount > 0) {
 		runningCommandCount--;
