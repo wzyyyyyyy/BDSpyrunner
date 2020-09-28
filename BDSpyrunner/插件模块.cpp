@@ -101,6 +101,7 @@ void AddArrayMember(PyObject* arr[], PyObject* mem) {
 	}
 };
 // 执行后端指令
+unsigned short runningCommandCount = 0;	// 正在执行的命令数
 static bool runcmd(string cmd) {
 	if (p_spscqueue != 0) {
 		if (p_level) {
@@ -108,6 +109,7 @@ static bool runcmd(string cmd) {
 				SYMCALL(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@AEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
 					p_spscqueue, cmd);
 			};
+			runningCommandCount++;
 			safeTick(fr);
 			return true;
 		}
@@ -357,9 +359,13 @@ THook(bool, "?_destroyBlockInternal@GameMode@@AEAA_NAEBVBlockPos@@E@Z",
 // 控制台输入
 THook(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@AEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
 	VA _this, string* cmd) {
+	// 插件指令不触发
+	if (runningCommandCount > 0) {
+		runningCommandCount--;
+		return original(_this, cmd);
+	}
 	CallAll(ServerCmd, "{s:s}", "cmd", (*cmd).substr(0, (*cmd).length() - 1));
 	RET(_this, cmd)
-	return original(_this, cmd);
 }
 // 玩家开箱准备
 THook(bool,"?use@ChestBlock@@UEBA_NAEAVPlayer@@AEBVBlockPos@@@Z",
