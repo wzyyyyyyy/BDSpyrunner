@@ -15,7 +15,8 @@
 		}\
 		else break;\
 	}\
-	//PyArg_Parse(ret, "p", &res);
+	if (ret != 0)\
+		PyArg_Parse(ret, "p", &res);
 //标准流输出信息
 #define pr(...) cout <<__VA_ARGS__<<endl
 //THook返回判断
