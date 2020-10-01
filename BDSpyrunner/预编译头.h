@@ -13,11 +13,10 @@
 #include <unordered_map>
 #include <chrono>
 #include <map>
-#include <set>
-#include <utility>
-#include <stdio.h>
 #include <string>
 #include <string_view>
+#define PY_SSIZE_T_CLEAN
+#include "include/Python.h"
 extern "C" {
 	_declspec(dllimport) int HookFunction(void* oldfunc, void** poutold, void* newfunc);
 	_declspec(dllimport) void* GetServerSymbol(char const* name);
@@ -29,15 +28,13 @@ using VA = unsigned __int64;
 using RVA = unsigned int;
 template<typename Type>
 using Ptr = Type*;
-#define BKDR_MUL 131
-#define BKDR_ADD 0
 typedef unsigned long long CHash;
 constexpr CHash do_hash(std::string_view x) {
 	CHash rval = 0;
 	for (size_t i = 0; i < x.size(); ++i) {
-		rval *= BKDR_MUL;
+		rval *= 131;
 		rval += x[i];
-		rval += BKDR_ADD;
+		rval += 0;
 	}
 	return rval;
 }
@@ -73,7 +70,6 @@ inline const T& dAccess(void const* ptr, uintptr_t off) {
 #define __WEAK __declspec(selectany)
 
 #define SYM(x) GetServerSymbol(x)
-#define SymFn(ret, fn, ...) ((ret(*)(__VA_ARGS__))(SYM(fn)))
 
 template<typename T_RET, typename... Args>
 T_RET Symcall(const char* fn, Args... args) {
@@ -82,12 +78,7 @@ T_RET Symcall(const char* fn, Args... args) {
 	return p(args...);
 }
 #define SYMCALL(RETURN_TYPE, FN, ...) (Symcall<RETURN_TYPE>(FN, ##__VA_ARGS__))
-#define SymCall(ret,fn, ...) ((ret(*)(__VA_ARGS__))(SYM(fn)))
-
-#ifndef V8_ENV
-#define Call SymFn
-#endif // ! V8_ENV
-#define dlsym(xx) SYM(xx)
+//#define SymCall(ret,fn, ...) ((ret(*)(__VA_ARGS__))(SYM(fn)))
 class THookRegister {
 public:
 	THookRegister(void* address, void* hook, void** org) {
@@ -125,7 +116,6 @@ public:
 		THookRegister(sym, hookUnion.b, org);
 	}
 };
-#define VA_EXPAND(...) __VA_ARGS__
 template <CHash, CHash>
 struct THookTemplate;
 template <CHash, CHash>
@@ -152,8 +142,8 @@ extern THookRegister THookRegisterTemplate;
 
 #define _TInstanceDefHook(iname, sym, ret, type, ...) \
 	_TInstanceHook(                                   \
-		: public type, type, iname, sym, ret, VA_EXPAND(__VA_ARGS__))
-#define _TInstanceNoDefHook(iname, sym, ret, ...) _TInstanceHook(, void, iname, sym, ret, VA_EXPAND(__VA_ARGS__))
+		: public type, type, iname, sym, ret, __VA_ARGS__)
+#define _TInstanceNoDefHook(iname, sym, ret, ...) _TInstanceHook(, void, iname, sym, ret, __VA_ARGS__)
 
 #define _TStaticHook(pclass, iname, sym, ret, ...)                                                          \
 	template <>                                                                                             \
@@ -176,15 +166,15 @@ extern THookRegister THookRegisterTemplate;
 
 #define _TStaticDefHook(iname, sym, ret, type, ...) \
 	_TStaticHook(                                   \
-		: public type, iname, sym, ret, VA_EXPAND(__VA_ARGS__))
-#define _TStaticNoDefHook(iname, sym, ret, ...) _TStaticHook(, iname, sym, ret, VA_EXPAND(__VA_ARGS__))
+		: public type, iname, sym, ret, __VA_ARGS__)
+#define _TStaticNoDefHook(iname, sym, ret, ...) _TStaticHook(, iname, sym, ret, __VA_ARGS__)
 
-#define THook2(iname, ret, sym, ...) _TStaticNoDefHook(iname, sym, ret, VA_EXPAND(__VA_ARGS__))
-#define THook(ret, sym, ...) THook2(sym, ret, sym, VA_EXPAND(__VA_ARGS__))
-#define TStaticHook2(iname, ret, sym, type, ...) _TStaticDefHook(iname, sym, ret, type, VA_EXPAND(__VA_ARGS__))
-#define TStaticHook(ret, sym, type, ...) TStaticHook2(sym, ret, sym, type, VA_EXPAND(__VA_ARGS__))
-#define TClasslessInstanceHook2(iname, ret, sym, ...) _TInstanceNoDefHook(iname, sym, ret, VA_EXPAND(__VA_ARGS__))
-#define TClasslessInstanceHook(ret, sym, ...) TClasslessInstanceHook2(sym, ret, sym, VA_EXPAND(__VA_ARGS__))
-#define TInstanceHook2(iname, ret, sym, type, ...) _TInstanceDefHook(iname, sym, ret, type, VA_EXPAND(__VA_ARGS__))
-#define TInstanceHook(ret, sym, type, ...) TInstanceHook2(sym, ret, sym, type, VA_EXPAND(__VA_ARGS__))
+#define THook2(iname, ret, sym, ...) _TStaticNoDefHook(iname, sym, ret, __VA_ARGS__)
+#define THook(ret, sym, ...) THook2(sym, ret, sym, __VA_ARGS__)
+#define TStaticHook2(iname, ret, sym, type, ...) _TStaticDefHook(iname, sym, ret, type, __VA_ARGS__)
+#define TStaticHook(ret, sym, type, ...) TStaticHook2(sym, ret, sym, type, __VA_ARGS__)
+#define TClasslessInstanceHook2(iname, ret, sym, ...) _TInstanceNoDefHook(iname, sym, ret, __VA_ARGS__)
+#define TClasslessInstanceHook(ret, sym, ...) TClasslessInstanceHook2(sym, ret, sym, __VA_ARGS__)
+#define TInstanceHook2(iname, ret, sym, type, ...) _TInstanceDefHook(iname, sym, ret, type, __VA_ARGS__)
+#define TInstanceHook(ret, sym, type, ...) TInstanceHook2(sym, ret, sym, type, __VA_ARGS__)
 #endif //PCH_H

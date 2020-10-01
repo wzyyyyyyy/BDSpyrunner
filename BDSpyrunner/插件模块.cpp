@@ -2,8 +2,6 @@
 #include "结构体.hpp"
 #include "tick/tick.h"
 #include <thread>
-#define PY_SSIZE_T_CLEAN
-#include "include/Python.h"
 #pragma warning(disable:4996)
 //调用所有函数
 #define CallAll(arr,...) \
@@ -49,14 +47,17 @@ PyObject
 * SetSlot[MAX];
 static VA p_spscqueue = 0;
 static VA p_level = 0;
-static map<string, Player*> onlinePlayers;
-static map<Player*, bool> playerSign;
+static unordered_map<string, Player*> onlinePlayers;
+static unordered_map<Player*, bool> playerSign;
 static map<unsigned, bool> fids;
-//-----------------------
-// 函数定义
-//-----------------------
+unsigned short runningCommandCount = 0;	// 正在执行的命令数
+/*
+-----------------------
+ 函数定义
+-----------------------
+*/
 // 清理所有事件
-void clearAllEvents() {
+static void clearAllEvents() {
 	for (int i = 0; i < MAX; i++) {
 		ServerCmd[i] = NULL;
 		ServerCmdOutput[i] = NULL;
@@ -71,7 +72,6 @@ void clearAllEvents() {
 		SetSlot[i] = NULL;
 	}
 }
-
 // 判断指针是否为玩家列表中指针
 static bool checkIsPlayer(void* p) {
 	return playerSign[(Player*)p];
@@ -111,7 +111,7 @@ static string GBKToUTF8(const char* strGBK)
 	return strOutUTF8;
 }
 // 添加数组成员
-void AddArrayMember(PyObject* arr[], PyObject* mem) {
+static void AddArrayMember(PyObject* arr[], PyObject* mem) {
 	for (int i = 0; i < 10; i++) {
 		if (arr[i] == 0 && PyCallable_Check(mem)) {
 			arr[i] = mem;
@@ -119,8 +119,13 @@ void AddArrayMember(PyObject* arr[], PyObject* mem) {
 		}
 	}
 };
+// 多线程延时
+static void delay(int time, PyObject* func) {
+	Sleep(time);
+	PyObject_CallFunction(func, 0);
+	return;
+}
 // 执行后端指令
-unsigned short runningCommandCount = 0;	// 正在执行的命令数
 static bool runcmd(string cmd) {
 	if (p_spscqueue != 0) {
 		if (p_level) {
@@ -145,7 +150,7 @@ static unsigned getFormId() {
 	return id;
 }
 // 发送一个SimpleForm的表单数据包
-static unsigned sendForm(std::string uuid, std::string str)
+static unsigned sendForm(string uuid, string str)
 {
 	unsigned fid = getFormId();
 	// 此处自主创建包
@@ -179,12 +184,6 @@ static PyObject* api_log(PyObject* self, PyObject* args) {
 	else pr(msg);
 	return Py_None;
 }
-// 多线程延时
-static void delay(int time, PyObject* func) {
-	Sleep(time);
-	PyObject_CallFunction(func, 0);
-	return;
-}
 // 延时
 static PyObject* api_delay(PyObject* self, PyObject* args) {
 	int time = 0;
@@ -196,7 +195,7 @@ static PyObject* api_delay(PyObject* self, PyObject* args) {
 	}
 	return Py_None;
 }
-//设置监听
+// 设置监听
 static PyObject* api_setListener(PyObject* self, PyObject* args) {
 	//(void)self;
 	int m = 0;
@@ -223,12 +222,43 @@ static PyObject* api_setListener(PyObject* self, PyObject* args) {
 	}
 	return Py_None;
 }
+// 发送表单
+static PyObject* api_sendForm(PyObject* self, PyObject* args) {
+	char* uuid;
+	char* str;
+	if (!PyArg_ParseTuple(args, "ss", &uuid, &str));
+	else
+	{
+		return Py_BuildValue("i", sendForm(uuid, str));
+	}
+	return Py_None;
+}
+// 获取在线玩家列表
+static PyObject* api_getOnLinePlayers(PyObject* self, PyObject* args) {
+	PyObject* ret = 0;
+	if (!PyArg_ParseTuple(args, ""));
+	else
+	{
+		PyObject* ret = PyDict_New();
+		for (auto& op : playerSign) {
+			Player* p = op.first;
+			if (op.second) {
+				PyDict_SetItemString(ret, p->getNameTag().c_str(), Py_BuildValue("[s,s]", p->getUuid()->toString().c_str(), p->getXuid(p_level).c_str()));
+			}
+		}
+
+		return Py_BuildValue("O", ret);
+	}
+	return Py_None;
+}
 // 方法列表
 static PyMethodDef mcMethods[] = {
 	{"runcmd", api_runCmd, METH_VARARGS,""},
 	{"setListener", api_setListener, METH_VARARGS,""},
 	{"log", api_log, METH_VARARGS,""},
 	{"setTimeout", api_delay, METH_VARARGS,""},
+	{"sendForm", api_sendForm, METH_VARARGS,""},
+	{"getOnLinePlayers", api_getOnLinePlayers, METH_VARARGS,""},
 	{0,0,0,0}
 };
 // 模块声明
@@ -244,8 +274,6 @@ static PyObject* PyInit_mc(void) {
 void init() {
 	pr(u8"[插件]Python runner(测试版)加载成功");
 	Py_LegacyWindowsStdioFlag = 1;
-	//Py_DebugFlag = 1;Py_UTF8Mode = 1;
-	Py_IsolatedFlag = 1;
 	PyImport_AppendInittab("mc", &PyInit_mc); //增加一个模块
 	Py_Initialize();
 	PyEval_InitThreads();
@@ -258,7 +286,7 @@ void init() {
 	//第一次查找
 	handle = _findfirst64i32(inPath, &fileinfo);
 	// 未找到插件不需要执行
-	if(handle != -1LL) {
+	if (handle != -1LL) {
 		do
 		{
 			Py_NewInterpreter();
@@ -273,12 +301,14 @@ void init() {
 	_findclose(handle);
 }
 // 插件卸载
-int exit() {
-	return Py_FinalizeEx();
+void exit() {
+	Py_FinalizeEx();
 }
-//-----------------------
-// THook列表
-//-----------------------
+/*
+-----------------------
+ THook列表
+-----------------------
+*/
 // 获取指令队列
 THook(VA, "??0?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@QEAA@_K@Z",
 	VA _this) {
@@ -296,7 +326,7 @@ THook(VA, "??0Level@@QEAA@AEBV?$not_null@V?$NonOwnerPointer@VSoundPlayerInterfac
 THook(VA, "?onPlayerJoined@ServerScoreboard@@UEAAXAEBVPlayer@@@Z",
 	VA a1, Player* p) {
 	VA hret = original(a1, p);
-	//onlinePlayers[uuid] = p;
+	onlinePlayers[p->getUuid()->toString()] = p;
 	playerSign[p] = true;
 	return hret;
 }
@@ -329,7 +359,7 @@ THook(bool, "?useItemOn@GameMode@@UEAA_NAEAVItemStack@@AEBVBlockPos@@EAEBVVec3@@
 		"blockname", bn.c_str(),
 		"bid", bid,
 		"position", bp->x, bp->y, bp->z,
-		"isstand",st
+		"isstand", st
 	);
 	RET(_this, item, bp, a4, v5, b)
 }
@@ -348,7 +378,7 @@ THook(bool, "?mayPlace@BlockSource@@QEAA_NAEBVBlock@@AEBVBlockPos@@EPEAVActor@@_
 			"blockname", bn.c_str(),
 			"bid", bid,
 			"position", bp->x, bp->y, bp->z,
-			"isstand",st
+			"isstand", st
 		);
 		RET(_this, b, bp, a4, p, _bool)
 	}
@@ -371,7 +401,7 @@ THook(bool, "?_destroyBlockInternal@GameMode@@AEAA_NAEBVBlockPos@@E@Z",
 		"blockname", bn,
 		"bid", bid,
 		"position", bp->x, bp->y, bp->z,
-		"isstand",st
+		"isstand", st
 	);
 	RET(_this, bp)
 }
@@ -379,12 +409,13 @@ THook(bool, "?_destroyBlockInternal@GameMode@@AEAA_NAEBVBlockPos@@E@Z",
 THook(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@AEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
 	VA _this, string* cmd) {
 	if (*cmd == "pyreload\r") {
-		int code = exit();
-		clearAllEvents();
-		std::cout << "pyr stoped(" << code << ")" << std::endl;
-		init();
-		std::cout << "pyr reload successed" << std::endl;
-		return 0;
+		if (!Py_FinalizeEx()) {
+			clearAllEvents();
+			pr("pyr stoped");
+			init();
+			pr("pyr reload successed");
+			return 0;
+		}
 	}
 	// 插件指令不触发
 	if (runningCommandCount > 0) {
@@ -395,7 +426,7 @@ THook(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$a
 	RET(_this, cmd)
 }
 // 玩家开箱准备
-THook(bool,"?use@ChestBlock@@UEBA_NAEAVPlayer@@AEBVBlockPos@@@Z",
+THook(bool, "?use@ChestBlock@@UEBA_NAEAVPlayer@@AEBVBlockPos@@@Z",
 	void* _this, Player* p, BlockPos* bp) {
 	//BlockSource* bs = (BlockSource*)((Level*)p->getLevel())->getDimension(p->getDimensionId())->getBlockSouce();
 	//PyObject_CallFunction(StartOpenChest[0], "i", 64);
@@ -405,14 +436,13 @@ THook(bool,"?use@ChestBlock@@UEBA_NAEAVPlayer@@AEBVBlockPos@@@Z",
 		"XYZ", pp->x, pp->y, pp->z,
 		"dimensionid", did,
 		"position", bp->x, bp->y, bp->z,
-		"isstand",1
+		"isstand", 1
 	);
 	RET(_this, p, bp);
 	//return original(_this, p, bp);
 }
 // 玩家开桶准备
-THook(bool,
-	"?use@BarrelBlock@@UEBA_NAEAVPlayer@@AEBVBlockPos@@@Z",
+THook(bool, "?use@BarrelBlock@@UEBA_NAEAVPlayer@@AEBVBlockPos@@@Z",
 	void* _this, Player* p, BlockPos* bp) {
 	//auto bs = (BlockSource*)((Level*)p->getLevel())->getDimension(p->getDimensionId())->getBlockSouce();
 	//auto b = bs->getBlock(bp);
@@ -423,13 +453,12 @@ THook(bool,
 		"XYZ", pp->x, pp->y, pp->z,
 		"dimensionid", did,
 		"position", bp->x, bp->y, bp->z,
-		"isstand",st
+		"isstand", st
 	);
 	RET(_this, p, bp);
 }
 // 玩家关闭箱子
-THook(void,
-	"?stopOpen@ChestBlockActor@@UEAAXAEAVPlayer@@@Z",
+THook(void, "?stopOpen@ChestBlockActor@@UEAAXAEAVPlayer@@@Z",
 	void* _this, Player* p) {
 	auto real_this = reinterpret_cast<void*>(reinterpret_cast<VA>(_this) - 248);
 	auto bp = reinterpret_cast<BlockActor*>(real_this)->getPosition();
@@ -441,13 +470,12 @@ THook(void,
 		"XYZ", pp->x, pp->y, pp->z,
 		"dimensionid", did,
 		"position", bp->x, bp->y, bp->z,
-		"isstand",st
+		"isstand", st
 	);
 	return original(_this, p);
 }
 // 玩家关闭木桶
-THook(void,
-	"?stopOpen@BarrelBlockActor@@UEAAXAEAVPlayer@@@Z",
+THook(void, "?stopOpen@BarrelBlockActor@@UEAAXAEAVPlayer@@@Z",
 	void* _this, Player* p) {
 	auto real_this = reinterpret_cast<void*>(reinterpret_cast<VA>(_this) - 248);
 	auto bp = reinterpret_cast<BlockActor*>(real_this)->getPosition();
@@ -459,13 +487,12 @@ THook(void,
 		"XYZ", pp->x, pp->y, pp->z,
 		"dimensionid", did,
 		"position", bp->x, bp->y, bp->z,
-		"isstand",st
+		"isstand", st
 	);
-	return original(_this,p);
+	return original(_this, p);
 }
 // 玩家放入取出数量
-THook(void,
-	"?containerContentChanged@LevelContainerModel@@UEAAXH@Z",
+THook(void, "?containerContentChanged@LevelContainerModel@@UEAAXH@Z",
 	LevelContainerModel* a1, VA slot) {
 	VA v3 = *((VA*)a1 + 26);				// IDA LevelContainerModel::_getContainer
 	BlockSource* bs = *(BlockSource**)(*(VA*)(v3 + 808) + 72);
@@ -490,12 +517,12 @@ THook(void,
 				"blockname", bn.c_str(),
 				"bid", bid,
 				"position", bp->x, bp->y, bp->z,
-				"isstand",st,
-				"itemid",iid,
-				"itemcount",isize,
-				"itemname",iname,
-				"itemaux",iaux,
-				"slot",slot
+				"isstand", st,
+				"itemid", iid,
+				"itemcount", isize,
+				"itemname", iname,
+				"itemaux", iaux,
+				"slot", slot
 			);
 		}
 		else

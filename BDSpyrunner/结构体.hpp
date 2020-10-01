@@ -64,6 +64,14 @@ struct Level {
 		return *(VA*)((VA)this + 8280);
 	}
 };
+struct MCUUID {
+	// 取uuid字符串
+	string toString() {
+		string s;
+		SYMCALL(string&, "?asString@UUID@mce@@QEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@XZ", this, &s);
+		return s;
+	}
+};
 struct Actor {
 	// 获取生物名称信息
 	string getNameTag() {
@@ -113,6 +121,85 @@ struct Mob : Actor {
 	}
 };
 struct Player : Mob {
+	// 取uuid
+	MCUUID* getUuid() {				// IDA ServerNetworkHandler::_createNewPlayer
+		return (MCUUID*)((char*)this + 2720);
+	}
+
+	// 根据地图信息获取玩家xuid
+	std::string& getXuid(VA level) {
+		return SYMCALL(std::string&, "?getPlayerXUID@Level@@QEBAAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBVUUID@mce@@@Z",
+			level, (char*)this + 2720);
+	}
+
+	// 重设服务器玩家名
+	void reName(std::string name) {
+		SYMCALL(void, "?setName@Player@@UEAAXAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
+			this, name);
+	}
+
+	// 获取网络标识符
+	VA getNetId() {
+		return (VA)this + 2432;		// IDA ServerPlayer::setPermissions
+	}
+
+	VA getContainerManager() {
+		return (VA)this + 2912;		// IDA Player::setContainerManager
+	}
+	// 获取背包
+	VA getSupplies() {				// IDA Player::add
+		return *(VA*)(*((VA*)this + 366) + 176);
+	}
+	// 获取末影箱
+	VA getEnderChestContainer() {
+		return SYMCALL(VA, "?getEnderChestContainer@Player@@QEAAPEAVEnderChestContainer@@XZ", this);
+	}
+	// 设置一个装备
+	VA setArmor(int i, VA item) {
+		return SYMCALL(VA, "?setArmor@ServerPlayer@@UEAAXW4ArmorSlot@@AEBVItemStack@@@Z", this, i, item);
+	}
+	// 设置副手
+	VA setOffhandSlot(VA item) {
+		return SYMCALL(VA, "?setOffhandSlot@Player@@UEAAXAEBVItemStack@@@Z", this, item);
+	}
+	// 添加一个物品
+	void addItem(VA item) {
+		SYMCALL(VA, "?add@Player@@UEAA_NAEAVItemStack@@@Z", this, item);
+	}
+	// 获取当前选中的框位置
+	int getSelectdItemSlot() {			// IDA Player::getSelectedItem
+		VA v1 = *((VA*)this + 366);
+		return *(unsigned int*)(v1 + 16);
+	}
+	// 获取当前物品
+	VA getSelectedItem() {
+		VA x = SYMCALL(VA, "?getSelectedItem@Player@@QEBAAEBVItemStack@@XZ",
+			this);
+		return x;
+	}
+	// 获取游戏时命令权限
+	char getPermission() {						// IDA ServerPlayer::setPermissions
+		return **(char**)((VA)this + 2112);
+	}
+	// 设置游戏时命令权限
+	void setPermission(char m) {
+		SYMCALL(void, "?setPermissions@ServerPlayer@@UEAAXW4CommandPermissionLevel@@@Z",
+			this, m);
+	}
+	// 获取游戏时游玩权限
+	char getPermissionLevel() {						// IDA Abilities::setPlayerPermissions
+		return (*(char**)((VA)this + 2112))[1];
+	}
+	// 设置游戏时游玩权限
+	void setPermissionLevel(char m) {
+		SYMCALL(void, "?setPlayerPermissions@Abilities@@QEAAXW4PlayerPermissionLevel@@@Z",
+			(VA)this + 2112, m);
+	}
+	// 更新所有物品列表
+	void updateInventory() {
+		VA itm = (VA)this + 4472;				// IDA Player::drop
+		SYMCALL(VA, "?forceBalanceTransaction@InventoryTransactionManager@@QEAAXXZ", itm);
+	}
 	// 发送数据包
 	VA sendPacket(VA pkt) {
 		return SYMCALL(VA, "?sendNetworkPacket@ServerPlayer@@UEBAXAEAVPacket@@@Z",

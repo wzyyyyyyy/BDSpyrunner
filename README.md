@@ -49,7 +49,17 @@ def a()
 	print('我是a')
 mc.setTimeout(a,500)
 ```
+## sendForm(字符串,字符串)
+	向玩家发送表单
+```py
+print(mc.sendForm('a6031970-8ed4-319c-aa45-ac844fd70261','{"content": [{"default": 1,"options": ["Option 1","Option 2","Option 3"],"type": "dropdown","text": "如你所见，下拉框"}],"type": "custom_form","title": "这是一个自定义窗体"}'))
+```
+## getOnLinePlayers()
+	获取当前在线玩家列表以及uuid,xuid字符串
+```py
+print(mc.getOnLinePlayers())
+```
 # 已知问题
-	1.控制台编码问题(目前是mbcs)
-	2.错误流消失问题(已解决)
-	3.多线程堵塞问题(py内)
+* [ ] 控制台编码问题(目前是mbcs)
+* [x] 错误流消失问题(已解决)
+* [ ] 多线程堵塞问题(py内)
