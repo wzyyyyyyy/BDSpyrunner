@@ -1,13 +1,6 @@
 #pragma once
-//-----------------------
-// 结构体定义
-//-----------------------
 #include "预编译头.h"
 using namespace std;
-// 玩家坐标结构体
-struct Vec3 {
-	float x, y, z;
-};
 struct BlockLegacy {
 	string getBlockName() {
 		return *(string*)((__int64)this + 112);
@@ -72,6 +65,12 @@ struct MCUUID {
 		return s;
 	}
 };
+struct Vec3 {
+	float x, y, z;
+};
+struct MobEffectInstance {
+	char fill[0x1C];
+};
 struct Actor {
 	// 获取生物名称信息
 	string getNameTag() {
@@ -94,13 +93,56 @@ struct Actor {
 	const BYTE isStand() {				// IDA MovePlayerPacket::MovePlayerPacket
 		return *reinterpret_cast<BYTE*>(reinterpret_cast<VA>(this) + 416);
 	}
+	// 取方块源
+	BlockSource* getRegion() {
+		return *reinterpret_cast<BlockSource**>(reinterpret_cast<VA>(this) + 414 * sizeof(void*));
+	}
+	// 获取生物类型
+	std::string getTypeName() {
+		std::string actor_typename;
+		SYMCALL(std::string&,
+			"?getEntityName@@YA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBVActor@@@Z",
+			&actor_typename, this);
+		return actor_typename;
+	}
 
+	// 获取实体类型
+	int getEntityTypeId() {
+		return SYMCALL(int,
+			"?getEntityTypeId@Actor@@UEBA?AW4ActorType@@XZ",
+			this);
+		//		if (t == 1)		// 未知类型，可能是玩家
+		//			return 319;
+	}
+
+	// 获取查询用ID
+	VA* getUniqueID() {
+		return SYMCALL(VA*, "?getUniqueID@Actor@@QEBAAEBUActorUniqueID@@XZ", this);
+	}
+
+	// 获取实体名称
+	std::string getEntityTypeName() {
+		std::string en_name;
+		SYMCALL(std::string&,
+			"?EntityTypeToLocString@@YA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@W4ActorType@@W4ActorTypeNamespaceRules@@@Z",
+			&en_name, getEntityTypeId());
+		return en_name;
+	}
+
+	// 更新属性
+	VA updateAttrs() {
+		return SYMCALL(VA, "?_sendDirtyActorData@Actor@@QEAAXXZ", this);
+	}
+	// 添加一个状态
+	VA addEffect(VA ef) {
+		return SYMCALL(VA, "?addEffect@Actor@@QEAAXAEBVMobEffectInstance@@@Z", this, ef);
+	}
 };
 struct Mob : Actor {
 	// 获取状态列表
-	//std::vector<MobEffectInstance>* getEffects() {					// IDA Mob::addAdditionalSaveData
-	//	return (std::vector<MobEffectInstance>*)((VA*)this + 152);
-	//}
+	std::vector<MobEffectInstance>* getEffects() {					// IDA Mob::addAdditionalSaveData
+		return (std::vector<MobEffectInstance>*)((VA*)this + 152);
+	}
 
 	// 获取装备容器
 	VA getArmor() {					// IDA Mob::addAdditionalSaveData
@@ -122,7 +164,7 @@ struct Mob : Actor {
 };
 struct Player : Mob {
 	// 取uuid
-	MCUUID* getUuid() {				// IDA ServerNetworkHandler::_createNewPlayer
+	MCUUID* getUuid() {	// IDA ServerNetworkHandler::_createNewPlayer
 		return (MCUUID*)((char*)this + 2720);
 	}
 
@@ -131,13 +173,11 @@ struct Player : Mob {
 		return SYMCALL(std::string&, "?getPlayerXUID@Level@@QEBAAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBVUUID@mce@@@Z",
 			level, (char*)this + 2720);
 	}
-
 	// 重设服务器玩家名
 	void reName(std::string name) {
 		SYMCALL(void, "?setName@Player@@UEAAXAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
 			this, name);
 	}
-
 	// 获取网络标识符
 	VA getNetId() {
 		return (VA)this + 2432;		// IDA ServerPlayer::setPermissions
@@ -205,6 +245,8 @@ struct Player : Mob {
 		return SYMCALL(VA, "?sendNetworkPacket@ServerPlayer@@UEBAXAEAVPacket@@@Z",
 			this, pkt);
 	}
+};
+struct Item{
 };
 struct ItemStackBase {
 	VA vtable;
@@ -294,8 +336,6 @@ struct LevelContainerModel {
 		return ((Player**)this)[26];
 	}
 };
-
-
 struct Container {
 	VA vtable;
 	// 获取容器内所有物品
@@ -305,7 +345,6 @@ struct Container {
 	}
 
 };
-
 struct SimpleContainer : Container {
 	// 获取一个指定框内物品
 	ItemStack* getItem(int slot) {
@@ -317,7 +356,6 @@ struct SimpleContainer : Container {
 			this, slot, item);
 	}
 };
-
 struct FillingContainer : Container {
 	// 格式化容器所有物品至tag
 	VA save(VA tag) {
@@ -330,11 +368,9 @@ struct FillingContainer : Container {
 			this, i, item);
 	}
 };
-
 struct IContainerManager {
 	VA vtable;
 };
-
 struct PlayerInventoryProxy {
 	VA vtable;
 	VA vtable2;
@@ -347,12 +383,10 @@ struct PlayerInventoryProxy {
 	std::vector<ItemStack> mComplexItems;
 	std::weak_ptr<VA> mHudContainerManager;
 };
-
 struct ContainerItemStack
 	:ItemStack {
 
 };
-
 struct ContainerManagerModel {
 	// 取开容者
 	Player* getPlayer() {				// IDA ContainerManagerModel::ContainerManagerModel
@@ -370,7 +404,6 @@ struct TextPacket {
 		return str;
 	}
 };
-
 struct CommandRequestPacket {
 	char filler[0x90];
 	// 取命令文本
@@ -379,11 +412,9 @@ struct CommandRequestPacket {
 		return str;
 	}
 };
-
 struct ModalFormRequestPacket {
 	char filler[0x48];
 };
-
 struct ModalFormResponsePacket {
 	// 取发起表单ID
 	UINT getFormId() {
