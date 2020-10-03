@@ -216,6 +216,50 @@ static PyObject* api_setListener(PyObject* self, PyObject* args) {
 	}
 	return Py_None;
 }
+//增加玩家等级
+static PyObject* api_addLevel(PyObject* self, PyObject* args) {
+	char* uuid;
+	int lv = 0;
+	if (PyArg_ParseTuple(args, "si", &uuid, &lv)) {
+		Player* pl = onlinePlayers[uuid];
+		if (playerSign[pl]) {
+			SYMCALL(void, "?addLevels@Player@@UEAAXH@Z", pl, lv);
+		}
+	}
+	return Py_None;
+}
+//rename
+static PyObject* api_setNameTag(PyObject* self, PyObject* args) {
+	char* uuid;
+	char* name;
+	if (PyArg_ParseTuple(args, "ss", &uuid, &name)) {
+		Player* pl = onlinePlayers[uuid];
+		if (playerSign[pl]) {
+			pl->reName(name);
+		}
+	}
+	return Py_None;
+}
+static PyObject* api_getPlayerPerm(PyObject* self, PyObject* args) {
+	char* uuid;
+	if (PyArg_ParseTuple(args, "s", &uuid)) {
+		Player* pl = onlinePlayers[uuid];
+		if (playerSign[pl]) {
+			return Py_BuildValue("i", pl->getPermission());
+		}
+	}
+}
+static PyObject* api_setPlayerPerm(PyObject* self, PyObject* args) {
+	char* uuid;
+	int lv;
+	if (PyArg_ParseTuple(args, "si", &uuid,&lv)) {
+		Player* pl = onlinePlayers[uuid];
+		if (playerSign[pl]) {
+				pl->setPermissionLevel(lv);
+		}
+	}
+	return Py_None;
+}
 // 发送表单
 static PyObject* api_sendForm(PyObject* self, PyObject* args) {
 	char* uuid;
@@ -252,13 +296,17 @@ static PyObject* api_setCommandDescribe(PyObject* self, PyObject* args) {
 // 方法列表
 static PyMethodDef mcMethods[] = {
 	{"runcmd", api_runCmd, METH_VARARGS,""},
+	{"setPlayerPerm",api_setPlayerPerm, METH_VARARGS,""},
+	{"addLevel", api_addLevel, METH_VARARGS,""},
+	{"setNameTag", api_setNameTag, METH_VARARGS,""},
+	{"getPlayerPerm", api_getPlayerPerm, METH_VARARGS,""},
 	{"setListener", api_setListener, METH_VARARGS,""},
 	{"log", api_log, METH_VARARGS,""},
 	{"setTimeout", api_delay, METH_VARARGS,""},
 	{"sendForm", api_sendForm, METH_VARARGS,""},
 	{"getOnLinePlayers", api_getOnLinePlayers, METH_NOARGS,""},
 	{"setCommandDescribe", api_setCommandDescribe, METH_VARARGS,""},
-	{0,0,0,0}
+	{NULL,NULL,NULL,NULL}
 };
 // 模块声明
 static PyModuleDef mcModule = {
