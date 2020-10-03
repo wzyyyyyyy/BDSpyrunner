@@ -1,8 +1,9 @@
 # 前言
 ## 欢迎来到Pyr文档
+![](logo.png)
 	此插件使用了CPython的api来实现py解释
 	参考
-	http://docs.python.org
+	[http://docs.python.org](http://docs.python.org)
 	本插件使用了嵌入式扩展
 	在初始化py环境时引入mc模块
 	所有接口均在mc模块内
@@ -26,7 +27,7 @@ mc.log('hello')
 	此参数用来传数据,以字典形式传人
 	可print来查看
 	相关事件数据和序号参考
-	http://game.xiafox.com/jsrdevdoc.htm#reg_t2
+	[http://game.xiafox.com/jsrdevdoc.htm#reg_t2](http://game.xiafox.com/jsrdevdoc.htm#reg_t2)
 	返回值决定是否拦截（True继续，False拦截）
 * [x] 1-控制台输入指令
 * [ ] 2-控制台指令输出
@@ -76,6 +77,11 @@ print(mc.sendForm('a6031970-8ed4-319c-aa45-ac844fd70261','{"content": [{"default
 	获取当前在线玩家列表以及uuid,xuid字符串
 ```py
 print(mc.getOnLinePlayers())
+```
+## setCommandDescribe(字符串,字符串)
+	设置指令说明
+```py
+mc.setCommandDescribe('指令','说明')
 ```
 # 已知问题
 * [ ] 控制台编码问题(目前是mbcs)

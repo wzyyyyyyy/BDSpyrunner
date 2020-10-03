@@ -48,6 +48,7 @@ static unordered_map<string, PyObject* [MAX]> funcs;//py函数
 static unordered_map<string, Player*> onlinePlayers;//在线玩家
 static unordered_map<Player*, bool> playerSign;//玩家在线
 static map<unsigned, bool> fids;//表单ID
+static map<string, string> command;//注册命令
 unsigned short runningCommandCount = 0;//正在执行的命令数
 #pragma endregion
 #pragma region 函数定义
@@ -237,6 +238,17 @@ static PyObject* api_getOnLinePlayers(PyObject* self, PyObject* args) {
 	}
 	return Py_BuildValue("O", ret);
 }
+// 设置指令说明
+static PyObject* api_setCommandDescribe(PyObject* self, PyObject* args) {
+	char* cmd;
+	char* des;
+	if (!PyArg_ParseTuple(args, "ss", &cmd, &des));
+	else
+	{
+		command[cmd] = des;
+	}
+	return Py_None;
+}
 // 方法列表
 static PyMethodDef mcMethods[] = {
 	{"runcmd", api_runCmd, METH_VARARGS,""},
@@ -245,6 +257,7 @@ static PyMethodDef mcMethods[] = {
 	{"setTimeout", api_delay, METH_VARARGS,""},
 	{"sendForm", api_sendForm, METH_VARARGS,""},
 	{"getOnLinePlayers", api_getOnLinePlayers, METH_NOARGS,""},
+	{"setCommandDescribe", api_setCommandDescribe, METH_VARARGS,""},
 	{0,0,0,0}
 };
 // 模块声明
@@ -263,8 +276,7 @@ void init() {
 	PyImport_AppendInittab("mc", &PyInit_mc); //增加一个模块
 	Py_Initialize();
 	//PyEval_InitThreads();
-	//用于查找的句柄
-	_finddata64i32_t fileinfo;
+	_finddata64i32_t fileinfo;//用于查找的句柄
 	long long handle = _findfirst64i32("./py/*.py", &fileinfo);
 	FILE* f;
 	// 未找到插件不需要执行
@@ -480,7 +492,7 @@ THook(void, "?stopOpen@BarrelBlockActor@@UEAAXAEAVPlayer@@@Z",
 	);
 	return original(_this, p);
 }
-// 玩家放入取
+// 玩家放入取出
 THook(void, "?containerContentChanged@LevelContainerModel@@UEAAXH@Z",
 	LevelContainerModel* a1, VA slot) {
 	VA v3 = *((VA*)a1 + 26);				// IDA LevelContainerModel::_getContainer
@@ -671,5 +683,14 @@ THook(void, "?handle@ServerNetworkHandler@@UEAAXAEBVNetworkIdentifier@@AEBVComma
 		);
 	}
 	original(_this, id, crp);
+}
+// 命令注册
+THook(void, "?setup@ChangeSettingCommand@@SAXAEAVCommandRegistry@@@Z",
+	void* _this) {
+	for (auto& cmd : command) {
+		SYMCALL(void, "?registerCommand@CommandRegistry@@QEAAXAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@PEBDW4CommandPermissionLevel@@UCommandFlag@@3@Z",
+			_this, cmd.first.c_str(), cmd.second.c_str(), 0, 0, 64);
+	}
+	original(_this);
 }
 #pragma endregion
