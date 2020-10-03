@@ -17,13 +17,13 @@ using namespace std;
 	}\
 	if (ret)\
 		PyArg_Parse(ret, "p", &res);\
-	PyErr_Print();
+	PyErr_Print()
 //标准流输出信息
 #define pr(...) cout <<__VA_ARGS__<<endl
 //THook返回判断
 #define RET(...) \
 	if (res) return original(__VA_ARGS__);\
-	else return 0;
+	else return 0
 //根据Player*获取玩家基本信息
 #define getPlayerInfo(p) \
 	string pn = p->getNameTag();\
@@ -44,6 +44,7 @@ using namespace std;
 const short MAX = 10;
 static VA p_spscqueue = 0;
 static VA p_level = 0;
+static VA STD_COUT_HANDLE = *(VA*)SYM("__imp_?cout@std@@3V?$basic_ostream@DU?$char_traits@D@std@@@1@A");
 static unordered_map<string, PyObject* [MAX]> funcs;//py函数
 static unordered_map<string, Player*> onlinePlayers;//在线玩家
 static unordered_map<Player*, bool> playerSign;//玩家在线
@@ -149,6 +150,11 @@ static unsigned sendForm(string uuid, string str)
 	safeTick(fr);
 	return fid;
 }
+// 命令输出
+static void logout(string str) {
+	SYMCALL(VA, "??$_Insert_string@DU?$char_traits@D@std@@_K@std@@YAAEAV?$basic_ostream@DU?$char_traits@D@std@@@0@AEAV10@QEBD_K@Z",
+		STD_COUT_HANDLE, str.c_str(), str.length());
+}
 // 执行指令
 static PyObject* api_runCmd(PyObject* self, PyObject* args) {
 	PyObject* pArgs = NULL;
@@ -157,15 +163,25 @@ static PyObject* api_runCmd(PyObject* self, PyObject* args) {
 	else runcmd(cmd);
 	return Py_None;
 }
-// 输出
+// 标准流输出
 static PyObject* api_log(PyObject* self, PyObject* args) {
 	char* msg = 0;
-	if (!PyArg_ParseTuple(args, "s", &msg));
-	else pr(msg);
+	int num = 0;
+	if (PyArg_ParseTuple(args, "s", &msg))pr(msg);
+	else if (PyArg_ParseTuple(args, "i", &num))pr(num);
+	PyErr_Clear();
+	return Py_None;
+}
+// 指令输出
+static PyObject* api_logout(PyObject* self, PyObject* args) {
+	char* msg;
+	if (PyArg_ParseTuple(args, "s", &msg)) {
+		logout(msg);
+	}
 	return Py_None;
 }
 // 延时
-static PyObject* api_delay(PyObject* self, PyObject* args) {
+static PyObject* api_setTimeout(PyObject* self, PyObject* args) {
 	int time = 0;
 	PyObject* func = 0;
 	if (!PyArg_ParseTuple(args, "Oi", &func, &time));
@@ -180,9 +196,7 @@ static PyObject* api_setListener(PyObject* self, PyObject* args) {
 	//(void)self;
 	int m = 0;
 	PyObject* func = 0;
-	if (!PyArg_ParseTuple(args, "iO", &m, &func));
-	else
-	{
+	if (PyArg_ParseTuple(args, "iO", &m, &func))
 		switch (m) {
 		case 1:AddFunction("ServerCmd", func); break;
 		case 2:AddFunction("ServerCmdOutput", func); break;
@@ -212,11 +226,9 @@ static PyObject* api_setListener(PyObject* self, PyObject* args) {
 		case 26:AddFunction("LevelExplode", func); break;
 		default: pr(u8"找不到此类监听!"); break;
 		}
-		//pr(PyObject_CallFunction(StartOpenChest[0], "{i:s}", 64, "x"));
-	}
 	return Py_None;
 }
-//增加玩家等级
+// 增加玩家等级
 static PyObject* api_addLevel(PyObject* self, PyObject* args) {
 	char* uuid;
 	int lv = 0;
@@ -228,7 +240,7 @@ static PyObject* api_addLevel(PyObject* self, PyObject* args) {
 	}
 	return Py_None;
 }
-//rename
+// 设置玩家名字
 static PyObject* api_setNameTag(PyObject* self, PyObject* args) {
 	char* uuid;
 	char* name;
@@ -240,6 +252,7 @@ static PyObject* api_setNameTag(PyObject* self, PyObject* args) {
 	}
 	return Py_None;
 }
+// 获取玩家权限
 static PyObject* api_getPlayerPerm(PyObject* self, PyObject* args) {
 	char* uuid;
 	if (PyArg_ParseTuple(args, "s", &uuid)) {
@@ -248,14 +261,16 @@ static PyObject* api_getPlayerPerm(PyObject* self, PyObject* args) {
 			return Py_BuildValue("i", pl->getPermission());
 		}
 	}
+	return Py_None;
 }
+// 设置玩家权限
 static PyObject* api_setPlayerPerm(PyObject* self, PyObject* args) {
 	char* uuid;
 	int lv;
-	if (PyArg_ParseTuple(args, "si", &uuid,&lv)) {
+	if (PyArg_ParseTuple(args, "si", &uuid, &lv)) {
 		Player* pl = onlinePlayers[uuid];
 		if (playerSign[pl]) {
-				pl->setPermissionLevel(lv);
+			pl->setPermissionLevel(lv);
 		}
 	}
 	return Py_None;
@@ -302,7 +317,8 @@ static PyMethodDef mcMethods[] = {
 	{"getPlayerPerm", api_getPlayerPerm, METH_VARARGS,""},
 	{"setListener", api_setListener, METH_VARARGS,""},
 	{"log", api_log, METH_VARARGS,""},
-	{"setTimeout", api_delay, METH_VARARGS,""},
+	{"logout", api_logout, METH_VARARGS,""},
+	{"setTimeout", api_setTimeout, METH_VARARGS,""},
 	{"sendForm", api_sendForm, METH_VARARGS,""},
 	{"getOnLinePlayers", api_getOnLinePlayers, METH_NOARGS,""},
 	{"setCommandDescribe", api_setCommandDescribe, METH_VARARGS,""},
@@ -357,6 +373,15 @@ THook(VA, "??0Level@@QEAA@AEBV?$not_null@V?$NonOwnerPointer@VSoundPlayerInterfac
 	VA level = original(a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11, a12, a13);
 	p_level = level;
 	return level;
+}
+// 服务器后台指令输出
+THook(VA, "??$_Insert_string@DU?$char_traits@D@std@@_K@std@@YAAEAV?$basic_ostream@DU?$char_traits@D@std@@@0@AEAV10@QEBD_K@Z",
+	VA handle, char* str, VA size) {
+	if (handle == STD_COUT_HANDLE) {
+		CallAll("ServerCmdOutput", "{s:s}", "msg", str);
+		RET(handle, str, size);
+	}
+	return original(handle, str, size);
 }
 // 玩家加载名字
 THook(VA, "?onPlayerJoined@ServerScoreboard@@UEAAXAEBVPlayer@@@Z",
@@ -415,7 +440,7 @@ THook(bool, "?useItemOn@GameMode@@UEAA_NAEAVItemStack@@AEBVBlockPos@@EAEBVVec3@@
 		"position", bp->x, bp->y, bp->z,
 		"isstand", st
 	);
-	RET(_this, item, bp, a4, v5, b)
+	RET(_this, item, bp, a4, v5, b);
 }
 // 玩家放置方块
 THook(bool, "?mayPlace@BlockSource@@QEAA_NAEBVBlock@@AEBVBlockPos@@EPEAVActor@@_N@Z",
@@ -434,7 +459,7 @@ THook(bool, "?mayPlace@BlockSource@@QEAA_NAEBVBlock@@AEBVBlockPos@@EPEAVActor@@_
 			"position", bp->x, bp->y, bp->z,
 			"isstand", st
 		);
-		RET(_this, b, bp, a4, p, _bool)
+		RET(_this, b, bp, a4, p, _bool);
 	}
 	return original(_this, b, bp, a4, p, _bool);
 }
@@ -457,7 +482,7 @@ THook(bool, "?_destroyBlockInternal@GameMode@@AEAA_NAEBVBlockPos@@E@Z",
 		"position", bp->x, bp->y, bp->z,
 		"isstand", st
 	);
-	RET(_this, bp)
+	RET(_this, bp);
 }
 // 控制台输入
 THook(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@?$SPSCQueue@V?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@$0CAA@@@AEAA_NAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
@@ -477,7 +502,7 @@ THook(bool, "??$inner_enqueue@$0A@AEBV?$basic_string@DU?$char_traits@D@std@@V?$a
 		return original(_this, cmd);
 	}
 	CallAll("ServerCmd", "{s:s}", "cmd", (*cmd).substr(0, (*cmd).length() - 1));
-	RET(_this, cmd)
+	RET(_this, cmd);
 }
 // 玩家开箱准备
 THook(bool, "?use@ChestBlock@@UEBA_NAEAVPlayer@@AEBVBlockPos@@@Z",
@@ -620,7 +645,7 @@ THook(bool, "?attack@Player@@UEAA_NAEAVActor@@@Z",
 		"actorname", an.c_str(),
 		"actortype", atn.c_str()
 	);
-	RET(p, a)
+	RET(p, a);
 }
 // 玩家切换维度
 THook(bool, "?_playerChangeDimension@Level@@AEAA_NPEAVPlayer@@AEAVChangeDimensionRequest@@@Z",

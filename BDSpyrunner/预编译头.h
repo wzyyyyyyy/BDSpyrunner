@@ -76,7 +76,7 @@ T_RET Symcall(const char* fn, Args... args) {
 	FnType p = (FnType)SYM(fn);
 	return p(args...);
 }
-#define SYMCALL(RETURN_TYPE, FN, ...) (Symcall<RETURN_TYPE>(FN, ##__VA_ARGS__))
+#define SYMCALL(ret, sym, ...) (Symcall<ret>(sym, ##__VA_ARGS__))
 //#define SymCall(ret,fn, ...) ((ret(*)(__VA_ARGS__))(SYM(fn)))
 class THookRegister {
 public:
