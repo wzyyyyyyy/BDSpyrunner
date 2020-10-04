@@ -463,6 +463,21 @@ static PyObject* api_kill(PyObject* self, PyObject* args) {
 	}
 	return Py_None;
 }
+static int seed = 46646491643;
+typedef unsigned int uint;
+THook(void*, "?write@StartGamePacket@@UEBAXAEAVBinaryStream@@@Z", void* this_, void* a) {
+	if (seed != 46646491643){
+	*((uint*)(((uintptr_t)this_) + 40)) = seed;
+	}
+  return original(this_, a);
+}
+static PyObject* api_setFakeSeed(PyObject* self, PyObject* args) {
+	int _seed;
+	if (PyArg_ParseTuple(args, "i", &_seed)) {
+		seed = _seed;
+	}
+	return Py_None;
+}
 // 方法列表
 static PyMethodDef mcMethods[] = {
 	{"log", api_log, METH_VARARGS,""},
@@ -472,6 +487,7 @@ static PyMethodDef mcMethods[] = {
 	{"getOnLinePlayers", api_getOnLinePlayers, METH_NOARGS,""},
 	{"setListener", api_setListener, METH_VARARGS,""},
 	{"sendForm", api_sendForm, METH_VARARGS,""},
+		{"setFakeSeed", api_setFakeSeed, METH_VARARGS,""},
     {"kill", api_kill,METH_VARARGS,""},
 	{"setOnFair", api_setOnFair, METH_VARARGS,""},
 	{"teleportTo", api_teleportTo, METH_VARARGS,""},
