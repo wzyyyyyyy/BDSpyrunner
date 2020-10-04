@@ -423,6 +423,46 @@ static PyObject* api_runcmdAs(PyObject* self, PyObject* args) {
 	}
 	return Py_None;
 }
+static PyObject* api_setOnFair(PyObject* self, PyObject* args) {
+	char* uuid;
+	int ms;
+	if (PyArg_ParseTuple(args, "si", &uuid,&ms)) {
+		Player* pl = onlinePlayers[uuid];
+		if (playerSign[pl]) {
+			SYMCALL(void, "?setOnFire@Mob@@UEAAXH@Z",pl,ms);
+		}
+	}
+	return Py_None;
+}
+//?teleportTo@Player@@UEAAXAEBVVec3@@_NHHAEBUActorUniqueID@@@Z
+static PyObject* api_teleportTo(PyObject* self, PyObject* args) {
+	char* uuid;
+	float x;
+	float y;
+	float z;
+	int dimid;
+	if (PyArg_ParseTuple(args, "sfffi", &uuid, &x,&y,&z,&dimid)) {
+		Player* pl = onlinePlayers[uuid];
+		if (playerSign[pl]) {
+			Vec3 pos;
+			pos.x = x;
+			pos.y = y;
+			pos.z = z;
+			SYMCALL(void, "?teleportTo@Player@@UEAAXAEBVVec3@@_NHHAEBUActorUniqueID@@@Z", pl, pos, true, dimid, pl->getUniqueID());
+		}
+	}
+	return Py_None;
+}
+static PyObject* api_kill(PyObject* self, PyObject* args) {
+	char* uuid;
+	if (PyArg_ParseTuple(args, "s", &uuid)) {
+		Player* pl = onlinePlayers[uuid];
+		if (playerSign[pl]) {
+			SYMCALL(void, "?kill@Mob@@UEAAXXZ", pl);
+		}
+	}
+	return Py_None;
+}
 // 方法列表
 static PyMethodDef mcMethods[] = {
 	{"log", api_log, METH_VARARGS,""},
@@ -432,6 +472,9 @@ static PyMethodDef mcMethods[] = {
 	{"getOnLinePlayers", api_getOnLinePlayers, METH_NOARGS,""},
 	{"setListener", api_setListener, METH_VARARGS,""},
 	{"sendForm", api_sendForm, METH_VARARGS,""},
+    {"kill", api_kill,METH_VARARGS,""},
+	{"setOnFair", api_setOnFair, METH_VARARGS,""},
+	{"teleportTo", api_teleportTo, METH_VARARGS,""},
 	{"getHand", api_getHand, METH_VARARGS,""},
 	{"getPos", api_getPos, METH_VARARGS,""},
 	{"getPlayerPerm", api_getPlayerPerm, METH_VARARGS,""},
