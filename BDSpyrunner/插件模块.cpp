@@ -9,12 +9,10 @@ using namespace std;
 #define CallAll(type,...) \
 	PyObject* ret = 0;\
 	int res = -1;\
-	for(int i = 0;i<10;i++){\
-		if(PyCallable_Check(funcs[type][i])){\
-		ret = PyObject_CallFunction(funcs[type][i],__VA_ARGS__);\
+	RVA i = 0;\
+	while(PyCallable_Check(funcs[type][i++])){\
+		ret = _PyObject_CallFunction_SizeT(funcs[type][i],__VA_ARGS__);\
 		}\
-		else break;\
-	}\
 	if (ret)\
 		PyArg_Parse(ret, "p", &res);\
 	PyErr_Print()
@@ -399,6 +397,12 @@ THook(VA, "?onPlayerJoined@ServerScoreboard@@UEAAXAEBVPlayer@@@Z",
 	);
 	return original(a1, p);
 }
+THook(void,"?onDisconnect@ServerNetworkHandler@@UEAAXAEBVNetworkIdentifier@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@_N1@Z",
+	VA a1,VA a2){
+	pr(a1);
+	pr(a2);
+	original(a1, a2);
+}
 // 玩家离开游戏
 THook(void, "?_onPlayerLeft@ServerNetworkHandler@@AEAAXPEAVServerPlayer@@_N@Z",
 	VA _this, Player* p, char v3) {
@@ -417,8 +421,32 @@ THook(void, "?_onPlayerLeft@ServerNetworkHandler@@AEAAXPEAVServerPlayer@@_N@Z",
 	);
 	return original(_this, p, v3);
 }
+// 玩家操作物品2
+THook(void, "?useItem@GameMode@@UEAA_NAEAVItemStack@@@Z",
+	void* _this,ItemStack* is) {
+	pr(u8"玩家使用物品");
+	Player* p = *(Player**)((VA)_this + 8);
+	getPlayerInfo(p);
+	pr(pn);
+	CallAll("UseItem", "{s:s,s:[f,f,f],s:i,s:i,s:i,s:s,s:i}",
+		"playername", pn,
+		"XYZ", pp->x, pp->y, pp->z,
+		"dimensionid", did,
+		"itemid", is->getId(),
+		"itemaux", is->getAuxValue(),
+		"itemname", is->getName().c_str(),
+		"isstand", st
+	);
+	return original(_this, is);
+}
+// 玩家捡起物品
+THook(bool,"?take@Player@@QEAA_NAEAVActor@@HH@Z",
+	Player* p,Actor* a,__int64 a3,unsigned a4) {
+	pr("take");
+	return original(p, a, a3, a4);
+}
 // 玩家操作物品
-THook(bool, "?useItemOn@GameMode@@UEAA_NAEAVItemStack@@AEBVBlockPos@@EAEBVVec3@@PEBVBlock@@@Z",
+/*THook(bool, "?useItemOn@GameMode@@UEAA_NAEAVItemStack@@AEBVBlockPos@@EAEBVVec3@@PEBVBlock@@@Z",
 	void* _this, ItemStack* item, BlockPos* bp, unsigned __int8 a4, void* v5, Block* b) {
 	Player* p = *(Player**)((VA)_this + 8);
 	getPlayerInfo(p);
@@ -428,7 +456,7 @@ THook(bool, "?useItemOn@GameMode@@UEAA_NAEAVItemStack@@AEBVBlockPos@@EAEBVVec3@@
 	BlockLegacy* bl = b->getBlockLegacy();
 	short bid = bl->getBlockItemID();
 	string bn = bl->getBlockName();
-	CallAll("UseItem", "{s:s,s:[f,f,f],s:i,s:i,s:i,s:s,s:s,s:is:[i,i,i],s:i}",
+	CallAll("UseItem", "{s:s,s:[f,f,f],s:i,s:i,s:i,s:s,s:s,s:i,s:[i,i,i],s:i}",
 		"playername", pn,
 		"XYZ", pp->x, pp->y, pp->z,
 		"dimensionid", did,
@@ -441,7 +469,7 @@ THook(bool, "?useItemOn@GameMode@@UEAA_NAEAVItemStack@@AEBVBlockPos@@EAEBVVec3@@
 		"isstand", st
 	);
 	RET(_this, item, bp, a4, v5, b);
-}
+}*/
 // 玩家放置方块
 THook(bool, "?mayPlace@BlockSource@@QEAA_NAEBVBlock@@AEBVBlockPos@@EPEAVActor@@_N@Z",
 	BlockSource* _this, Block* b, BlockPos* bp, unsigned __int8 a4, struct Actor* p, bool _bool) {
@@ -649,15 +677,18 @@ THook(bool, "?attack@Player@@UEAA_NAEAVActor@@@Z",
 }
 // 玩家切换维度
 THook(bool, "?_playerChangeDimension@Level@@AEAA_NPEAVPlayer@@AEAVChangeDimensionRequest@@@Z",
-	void* _this, Player* p, void* req) {
-	getPlayerInfo(p);
-	CallAll("ChangeDimension", "{s:s,s:[f,f,f],s:i,s:i}",
-		"playername", pn,
-		"XYZ", pp->x, pp->y, pp->z,
-		"dimensionid", did,
-		"isstand", st
-	);
-	RET(_this, p, req);
+	void* l, Player* p, void* req) {
+	bool result = original(l, p, req);
+	if (result) {
+		getPlayerInfo(p);
+		CallAll("ChangeDimension", "{s:s,s:[f,f,f],s:i,s:i}",
+			"playername", pn,
+			"XYZ", pp->x, pp->y, pp->z,
+			"dimensionid", did,
+			"isstand", st
+		);
+	}
+	return result;
 }
 // 生物死亡
 THook(void, "?die@Mob@@UEAAXAEBVActorDamageSource@@@Z",
