@@ -1,33 +1,23 @@
 # 前言
 ![logo](logo.png)<br>
 ## 欢迎来到Pyr文档
-此插件使用了CPython的api来实现py解释
+此插件使用了CPython的api来实现py解释<br>
 参考
-[http://docs.python.org](http://docs.python.org)
-本插件使用了嵌入式扩展
-在初始化py环境时引入mc模块
+[http://docs.python.org](http://docs.python.org)<br>
+本插件使用了嵌入式扩展<br>
+在初始化py环境时引入mc模块<br>
 所有接口均在mc模块内
 ***
 # 接口说明
-## runcmd(字符串)
-执行一段指令
-示例:
-```py
-mc.runcmd('say 你好')
-```
-## log(字符串)
-标准输出一段字符串(中文输出用,无中文用print)
-示例:
-```py
-mc.log('你好')
-```
-## setListener(整数,函数名)
+## 监听器
 设置监听器,执行函数<br>
 执行的函数需要有一个参数<br>
 此参数用来传数据,以字典形式传入<br>
 可print来查看<br>
 相关事件数据和序号参考
-[JSR文档](http://game.xiafox.com/jsrdevdoc.htm#reg_t2)
+[JSR文档](http://game.xiafox.com/jsrdevdoc.htm#reg_t2)<br>
+你也可以参考
+[帮助](帮助.txt)<br>
 返回值决定是否拦截（True继续，False拦截）<br>
 * [x] 1-控制台输入指令
 * [x] 2-控制台指令输出
@@ -55,45 +45,6 @@ mc.log('你好')
 * [ ] 24-移动监听
 * [x] 25-攻击监听
 * [ ] 26-爆炸监听
-```py
-def func(e):
-	print(e)
-	return False
-mc.setListener(1,func)
-```
-## setTimeout(函数,整数)
-延时执行一个无参函数...单位毫秒
-```py
-def a():
-	print('我是a')
-mc.setTimeout(a,500)
-```
-## sendForm(字符串,字符串)
-向玩家发送表单
-```py
-print(mc.sendForm('a6031970-8ed4-319c-aa45-ac844fd70261','{"content": [{"default": 1,"options": ["Option 1","Option 2","Option 3"],"type": "dropdown","text": "如你所见，下拉框"}],"type": "custom_form","title": "这是一个自定义窗体"}'))
-```
-## getOnLinePlayers()
-获取当前在线玩家列表以及uuid,xuid字符串
-```py
-print(mc.getOnLinePlayers())
-```
-## setCommandDescribe(字符串,字符串)
-设置指令说明
-```py
-mc.setCommandDescribe('指令','说明')
-```
-## getHands(字符串)
-获取玩家手持
-```py
-print(mc.getHands('a6031970-8ed4-319c-aa45-ac844fd70261'))
-```
-## getPos(字符串,字符串)
-设置指令说明
-```py
-print(mc.getPos('a6031970-8ed4-319c-aa45-ac844fd70261'))
-```
-***
 # 使用方法
 保证bds根目录有`chakra.dll`,`python38.dll`,`python38.zip`
 [下载链接](https://www.python.org/ftp/python/3.8.6/python-3.8.6-embed-amd64.zip)

@@ -85,9 +85,9 @@ struct ItemStackBase {
 	VA mPickupTime;
 	char mShowPickUp;
 	char unk2[7]{ 0 };
-	std::vector<VA*> mCanPlaceOn;
+	vector<VA*> mCanPlaceOn;
 	VA mCanPlaceOnHash;
-	std::vector<VA*> mCanDestroy;
+	vector<VA*> mCanDestroy;
 	VA mCanDestroyHash;
 	VA mBlockingTick;
 	ItemStackBase* mChargedItem;
@@ -138,8 +138,8 @@ struct ItemStack : ItemStackBase {
 			this);
 	}
 	// 取物品名称
-	std::string getName() {
-		std::string str;
+	string getName() {
+		string str;
 		SYMCALL(__int64, "?getName@ItemStackBase@@QEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@XZ",
 			this, &str);
 		return str;
@@ -182,9 +182,9 @@ struct Actor {
 		return *reinterpret_cast<BlockSource**>(reinterpret_cast<VA>(this) + 414 * sizeof(void*));
 	}
 	// 获取生物类型
-	std::string getTypeName() {
-		std::string actor_typename;
-		SYMCALL(std::string&,
+	string getTypeName() {
+		string actor_typename;
+		SYMCALL(string&,
 			"?getEntityName@@YA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBVActor@@@Z",
 			&actor_typename, this);
 		return actor_typename;
@@ -205,9 +205,9 @@ struct Actor {
 	}
 
 	// 获取实体名称
-	std::string getEntityTypeName() {
-		std::string en_name;
-		SYMCALL(std::string&,
+	string getEntityTypeName() {
+		string en_name;
+		SYMCALL(string&,
 			"?EntityTypeToLocString@@YA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@W4ActorType@@W4ActorTypeNamespaceRules@@@Z",
 			&en_name, getEntityTypeId());
 		return en_name;
@@ -224,8 +224,8 @@ struct Actor {
 };
 struct Mob : Actor {
 	// 获取状态列表
-	std::vector<MobEffectInstance>* getEffects() {					// IDA Mob::addAdditionalSaveData
-		return (std::vector<MobEffectInstance>*)((VA*)this + 152);
+	vector<MobEffectInstance>* getEffects() {					// IDA Mob::addAdditionalSaveData
+		return (vector<MobEffectInstance>*)((VA*)this + 152);
 	}
 
 	// 获取装备容器
@@ -253,12 +253,12 @@ struct Player : Mob {
 	}
 
 	// 根据地图信息获取玩家xuid
-	std::string& getXuid(VA level) {
-		return SYMCALL(std::string&, "?getPlayerXUID@Level@@QEBAAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBVUUID@mce@@@Z",
+	string& getXuid(VA level) {
+		return SYMCALL(string&, "?getPlayerXUID@Level@@QEBAAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@AEBVUUID@mce@@@Z",
 			level, (char*)this + 2720);
 	}
 	// 重设服务器玩家名
-	void reName(std::string name) {
+	void reName(string name) {
 		SYMCALL(void, "?setName@Player@@UEAAXAEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z",
 			this, name);
 	}
@@ -337,7 +337,7 @@ struct LevelContainerModel {
 struct Container {
 	VA vtable;
 	// 获取容器内所有物品
-	VA getSlots(std::vector<ItemStack*>* s) {
+	VA getSlots(vector<ItemStack*>* s) {
 		return SYMCALL(VA, "?getSlots@Container@@UEBA?BV?$vector@PEBVItemStack@@V?$allocator@PEBVItemStack@@@std@@@std@@XZ",
 			this, s);
 	}
@@ -378,8 +378,8 @@ struct PlayerInventoryProxy {
 	char mSelectedContainerId;
 	char uk2[7];
 	VA mInventory;
-	std::vector<ItemStack> mComplexItems;
-	std::weak_ptr<VA> mHudContainerManager;
+	vector<ItemStack> mComplexItems;
+	weak_ptr<VA> mHudContainerManager;
 };
 struct ContainerItemStack
 	:ItemStack {
@@ -397,16 +397,16 @@ struct LevelContainerManagerModel
 struct TextPacket {
 	char filler[0xC8];
 	// 取输入文本
-	std::string toString() {			// IDA ServerNetworkHandler::handle
-		std::string str = std::string(*(std::string*)((VA)this + 80));
+	string toString() {			// IDA ServerNetworkHandler::handle
+		string str = string(*(string*)((VA)this + 80));
 		return str;
 	}
 };
 struct CommandRequestPacket {
 	char filler[0x90];
 	// 取命令文本
-	std::string toString() {			// IDA ServerNetworkHandler::handle
-		std::string str = std::string(*(std::string*)((VA)this + 40));
+	string toString() {			// IDA ServerNetworkHandler::handle
+		string str = string(*(string*)((VA)this + 40));
 		return str;
 	}
 };
@@ -419,13 +419,88 @@ struct ModalFormResponsePacket {
 		return *(UINT*)((VA)this + 40);
 	}
 	// 取选择序号
-	std::string getSelectStr() {
-		std::string x = *(std::string*)((VA)this + 48);
+	string getSelectStr() {
+		string x = *(string*)((VA)this + 48);
 		VA l = x.length();
 		if (x.c_str()[l - 1] == '\n') {
 			return l > 1 ? x.substr(0, l - 1) :
 				x;
 		}
 		return x;
+	}
+};
+struct ScoreboardId {
+	//
+};
+struct PlayerScoreboardId {
+	//
+};
+struct PlayerScore {
+	//  *(_QWORD *)this = *(_QWORD *)a2;//ScoreboardId *a2
+	//*((_QWORD*)this + 1) = *((_QWORD*)a2 + 1);
+	// *((_DWORD *)this + 4) = int;
+	auto getscore() {
+		return *((__int64*)this + 4);
+	}
+};
+struct ScoreInfo {
+	//scoreboardcmd list; objective::objective; scoreboard getscores
+	//int scores    +12 this[12]
+	// string displayname  +96
+	//string name +64
+	auto getCount() {
+		return *(int*)((VA)(this) + 12);
+	}
+};
+struct Objective {
+	auto getPlayerScore(ScoreInfo* a1, ScoreboardId* a2) {
+		return SYMCALL(ScoreInfo*, "?getPlayerScore@Objective@@QEBA?AUScoreInfo@@AEBUScoreboardId@@@Z", this, a1, a2);
+	}
+	auto getPlayerScore(ScoreInfo* a1, PlayerScoreboardId* a2) {
+		return SYMCALL(ScoreInfo*, "?getPlayerScore@Objective@@QEBA?AUScoreInfo@@AEBUScoreboardId@@@Z", this, a1, a2);
+	}
+};
+struct IdentityDictionary {
+	//4个unmap
+	auto getScoreboardID(PlayerScoreboardId* a2) {
+		return SYMCALL(ScoreboardId*, "??$_getScoreboardId@UPlayerScoreboardId@@@IdentityDictionary@@AEBAAEBUScoreboardId@@AEBUPlayerScoreboardId@@AEBV?$unordered_map@UPlayerScoreboardId@@UScoreboardId@@U?$hash@UPlayerScoreboardId@@@std@@U?$equal_to@UPlayerScoreboardId@@@4@V?$allocator@U?$pair@$$CBUPlayerScoreboardId@@UScoreboardId@@@std@@@4@@std@@@Z", this, a2, this);
+	}
+};
+struct ScoreboardIdentityRef {
+	//bool请设置为1; a6=0 set,a6=1,add,a6=2,remove
+	bool modifiedscores(Objective* obj, __int64 num, unsigned __int8 setfun) {
+		int v25 = 0;
+		int nums = static_cast<int>(num);
+		return SYMCALL(bool, "?modifyScoreInObjective@ScoreboardIdentityRef@@QEAA_NAEAHAEAVObjective@@HW4PlayerScoreSetFunction@@@Z", this, &v25, obj, nums, setfun);
+	}
+};
+struct Scoreboard {
+	auto getObjective(string* str) {
+		return SYMCALL(Objective*, "?getObjective@Scoreboard@@QEBAPEAVObjective@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z", this, str);
+	}
+	auto getScoreboardId(string* str) {
+		return SYMCALL(ScoreboardId*, "?getScoreboardId@Scoreboard@@QEBAAEBUScoreboardId@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@@Z", this, str);
+	}
+	vector<Objective*>* getObjectives() {
+		return SYMCALL(vector<Objective*>*, "?getObjectives@Scoreboard@@QEBA?AV?$vector@PEBVObjective@@V?$allocator@PEBVObjective@@@std@@@std@@XZ", this);
+	}
+	auto getDisplayInfoFiltered(string* str) {
+		return SYMCALL(vector<PlayerScore>*, "?getDisplayInfoFiltered@Scoreboard@@QEBA?AV?$vector@UPlayerScore@@V?$allocator@UPlayerScore@@@std@@@std@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@3@@Z", this, str);
+	}
+	auto getTrackedIds() {
+		return SYMCALL(vector<ScoreboardId>*, "?getTrackedIds@Scoreboard@@QEBA?AV?$vector@UScoreboardId@@V?$allocator@UScoreboardId@@@std@@@std@@XZ", this);
+	}
+	auto getIdentityDictionary() {
+		return (IdentityDictionary*)((char*)this + 80);//gouzaohanshu
+	}
+	auto getScoreboardID(Player* a2) {
+		return SYMCALL(PlayerScoreboardId*, "?getScoreboardId@Scoreboard@@QEBAAEBUScoreboardId@@AEBVActor@@@Z", this, a2);
+	}
+	auto getScoreboardIdentityRef(ScoreboardId* a2) {
+		return SYMCALL(ScoreboardIdentityRef*, "?getScoreboardIdentityRef@Scoreboard@@QEAAPEAVScoreboardIdentityRef@@AEBUScoreboardId@@@Z", this, a2);
+	}
+	//bool请设置为1; a6=0 set,a6=1,add,a6=2,remove
+	auto modifyPlayerScore(bool* a2, ScoreboardId* a3, Objective* a4, int a5, unsigned __int8 a6) {
+		return SYMCALL(int, "?modifyPlayerScore@Scoreboard@@QEAAHAEA_NAEBUScoreboardId@@AEAVObjective@@HW4PlayerScoreSetFunction@@@Z", this, a2, a3, a4, a5, a6);
 	}
 };

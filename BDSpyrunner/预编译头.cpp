@@ -5,7 +5,6 @@
 // 当使用预编译的头时，需要使用此源文件，编译才能成功。
 
 void init();
-void exit();
 
 // DLL模块启动或退出时候调用
 BOOL APIENTRY DllMain(HMODULE hModule,
@@ -20,7 +19,7 @@ BOOL APIENTRY DllMain(HMODULE hModule,
 	case DLL_THREAD_DETACH:
 		break;
 	case DLL_PROCESS_DETACH:
-		exit();
+		Py_Finalize();
 		break;
 	}
 	return TRUE;
