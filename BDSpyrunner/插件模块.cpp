@@ -306,8 +306,41 @@ static PyObject* api_setCommandDescribe(PyObject* self, PyObject* args) {
 	}
 	return Py_None;
 }
+// 获取玩家位置
+static PyObject* api_getPos(PyObject* self, PyObject* args) {
+	char* uuid;
+	if (PyArg_ParseTuple(args, "s", &uuid)) {
+		Player* p = onlinePlayers[uuid];
+		if (playerSign[p]) {
+			Vec3* pp = p->getPos();
+			return Py_BuildValue("[f,f,f]",pp->x,pp->y,pp->z);
+		}
+	}
+	return Py_None;
+}
+// 获取玩家手持
+static PyObject* api_getHand(PyObject* self, PyObject* args) {
+	char* uuid;
+	if (PyArg_ParseTuple(args, "s", &uuid)) {
+		Player* p = onlinePlayers[uuid];
+		if (playerSign[p]) {
+			ItemStack* item = p->getSelectedItem();
+			short iaux = item->getAuxValue();
+			short iid = item->getId();
+			string iname = item->getName();
+			return Py_BuildValue("{s:i,s:i,s:s}",
+				"itemid",iid,
+				"itemaux",iaux,
+				"itemname",iname.c_str()
+			);
+		}
+	}
+	return Py_None;
+}
 // 方法列表
 static PyMethodDef mcMethods[] = {
+	{"getHand", api_getHand, METH_VARARGS,""},
+	{"getPos", api_getPos, METH_VARARGS,""},
 	{"runcmd", api_runCmd, METH_VARARGS,""},
 	{"setPlayerPerm",api_setPlayerPerm, METH_VARARGS,""},
 	{"addLevel", api_addLevel, METH_VARARGS,""},
@@ -397,12 +430,6 @@ THook(VA, "?onPlayerJoined@ServerScoreboard@@UEAAXAEBVPlayer@@@Z",
 	);
 	return original(a1, p);
 }
-THook(void,"?onDisconnect@ServerNetworkHandler@@UEAAXAEBVNetworkIdentifier@@AEBV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@_N1@Z",
-	VA a1,VA a2){
-	pr(a1);
-	pr(a2);
-	original(a1, a2);
-}
 // 玩家离开游戏
 THook(void, "?_onPlayerLeft@ServerNetworkHandler@@AEAAXPEAVServerPlayer@@_N@Z",
 	VA _this, Player* p, char v3) {
@@ -421,13 +448,11 @@ THook(void, "?_onPlayerLeft@ServerNetworkHandler@@AEAAXPEAVServerPlayer@@_N@Z",
 	);
 	return original(_this, p, v3);
 }
-// 玩家操作物品2
+// 玩家使用物品2
 THook(void, "?useItem@GameMode@@UEAA_NAEAVItemStack@@@Z",
-	void* _this,ItemStack* is) {
-	pr(u8"玩家使用物品");
+	void* _this, ItemStack* is) {
 	Player* p = *(Player**)((VA)_this + 8);
 	getPlayerInfo(p);
-	pr(pn);
 	CallAll("UseItem", "{s:s,s:[f,f,f],s:i,s:i,s:i,s:s,s:i}",
 		"playername", pn,
 		"XYZ", pp->x, pp->y, pp->z,
@@ -440,13 +465,17 @@ THook(void, "?useItem@GameMode@@UEAA_NAEAVItemStack@@@Z",
 	return original(_this, is);
 }
 // 玩家捡起物品
-THook(bool,"?take@Player@@QEAA_NAEAVActor@@HH@Z",
-	Player* p,Actor* a,__int64 a3,unsigned a4) {
+THook(bool, "?take@Player@@QEAA_NAEAVActor@@HH@Z",
+	Player* p, Actor* a, __int64 a3, unsigned a4) {
 	pr("take");
 	return original(p, a, a3, a4);
 }
-// 玩家操作物品
+// 玩家使用物品
 /*THook(bool, "?useItemOn@GameMode@@UEAA_NAEAVItemStack@@AEBVBlockPos@@EAEBVVec3@@PEBVBlock@@@Z",
+=======
+// 玩家操作物品
+THook(bool, "?useItemOn@GameMode@@UEAA_NAEAVItemStack@@AEBVBlockPos@@EAEBVVec3@@PEBVBlock@@@Z",
+>>>>>>> 2ade7991a174f47f1260fb202320a8f00fcd5387
 	void* _this, ItemStack* item, BlockPos* bp, unsigned __int8 a4, void* v5, Block* b) {
 	Player* p = *(Player**)((VA)_this + 8);
 	getPlayerInfo(p);
@@ -469,6 +498,7 @@ THook(bool,"?take@Player@@QEAA_NAEAVActor@@HH@Z",
 		"isstand", st
 	);
 	RET(_this, item, bp, a4, v5, b);
+<<<<<<< HEAD
 }*/
 // 玩家放置方块
 THook(bool, "?mayPlace@BlockSource@@QEAA_NAEBVBlock@@AEBVBlockPos@@EPEAVActor@@_N@Z",

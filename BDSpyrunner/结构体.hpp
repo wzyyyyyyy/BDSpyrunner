@@ -71,6 +71,90 @@ struct Vec3 {
 struct MobEffectInstance {
 	char fill[0x1C];
 };
+struct Item{
+};
+struct ItemStackBase {
+	VA vtable;
+	VA mItem;
+	VA mUserData;
+	VA mBlock;
+	short mAuxValue;
+	char mCount;
+	char mValid;
+	char unk[4]{ 0 };
+	VA mPickupTime;
+	char mShowPickUp;
+	char unk2[7]{ 0 };
+	std::vector<VA*> mCanPlaceOn;
+	VA mCanPlaceOnHash;
+	std::vector<VA*> mCanDestroy;
+	VA mCanDestroyHash;
+	VA mBlockingTick;
+	ItemStackBase* mChargedItem;
+	VA uk;
+public:
+	/*VA save() {
+		VA* cp = new VA[8]{ 0 };
+		return SYMCALL(VA, MSSYM_MD5_e02d5851c93a43bfe24a4396ecb87cde, this, cp);
+	}*/
+#if (COMMERCIAL)
+	Json::Value toJson() {
+		VA t = save();
+		Json::Value jv = (*(Tag**)t)->toJson();
+		(*(Tag**)t)->clearAll();
+		*(VA*)t = 0;
+		delete (VA*)t;
+		return jv;
+	}
+	void fromJson(Json::Value& jv) {
+		VA t = Tag::fromJson(jv);
+		SYMCALL(VA, MSSYM_B1QA7fromTagB1AA9ItemStackB2AAA2SAB1QA3AV1B1AE15AEBVCompoundTagB3AAAA1Z, this, *(VA*)t);
+		(*(Tag**)t)->clearAll();
+		*(VA*)t = 0;
+		delete (VA*)t;
+	}
+	void fromTag(VA t) {
+		SYMCALL(VA, MSSYM_B1QA7fromTagB1AA9ItemStackB2AAA2SAB1QA3AV1B1AE15AEBVCompoundTagB3AAAA1Z, this, t);
+	}
+#endif
+	/*bool getFromId(short id, short aux, char count) {
+		memcpy(this, SYM_POINT(void, MSSYM_B1QA5EMPTYB1UA4ITEMB1AA9ItemStackB2AAA32V1B1AA1B), 0x90);
+		bool ret = SYMCALL(bool, MSSYM_B2QUA7setItemB1AE13ItemStackBaseB2AAA4IEAAB1UA2NHB1AA1Z, this, id);
+		mCount = count;
+		mAuxValue = aux;
+		mValid = true;
+		return ret;
+	}*/
+};
+struct ItemStack : ItemStackBase {
+	// 取物品ID
+	short getId() {
+		return SYMCALL(short, "?getId@ItemStackBase@@QEBAFXZ",
+			this);
+	}
+	// 取物品特殊值
+	short getAuxValue() {
+		return SYMCALL(short, "?getAuxValue@ItemStackBase@@QEBAFXZ",
+			this);
+	}
+	// 取物品名称
+	std::string getName() {
+		std::string str;
+		SYMCALL(__int64, "?getName@ItemStackBase@@QEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@XZ",
+			this, &str);
+		return str;
+	}
+	// 取容器内数量
+	int getStackSize() {			// IDA ContainerModel::networkUpdateItem
+		return *((char*)this + 34);
+	}
+	// 判断是否空容器
+	/*bool isNull() {
+		return SYMCALL(bool,
+			MSSYM_B1QA6isNullB1AE13ItemStackBaseB2AAA4QEBAB1UA3NXZ,
+			this);
+	}*/
+};
 struct Actor {
 	// 获取生物名称信息
 	string getNameTag() {
@@ -212,10 +296,8 @@ struct Player : Mob {
 		return *(unsigned int*)(v1 + 16);
 	}
 	// 获取当前物品
-	VA getSelectedItem() {
-		VA x = SYMCALL(VA, "?getSelectedItem@Player@@QEBAAEBVItemStack@@XZ",
-			this);
-		return x;
+	ItemStack* getSelectedItem() {
+		return SYMCALL(ItemStack*, "?getSelectedItem@Player@@QEBAAEBVItemStack@@XZ", this);
 	}
 	// 获取游戏时命令权限
 	char getPermission() {						// IDA ServerPlayer::setPermissions
@@ -245,90 +327,6 @@ struct Player : Mob {
 		return SYMCALL(VA, "?sendNetworkPacket@ServerPlayer@@UEBAXAEAVPacket@@@Z",
 			this, pkt);
 	}
-};
-struct Item{
-};
-struct ItemStackBase {
-	VA vtable;
-	VA mItem;
-	VA mUserData;
-	VA mBlock;
-	short mAuxValue;
-	char mCount;
-	char mValid;
-	char unk[4]{ 0 };
-	VA mPickupTime;
-	char mShowPickUp;
-	char unk2[7]{ 0 };
-	std::vector<VA*> mCanPlaceOn;
-	VA mCanPlaceOnHash;
-	std::vector<VA*> mCanDestroy;
-	VA mCanDestroyHash;
-	VA mBlockingTick;
-	ItemStackBase* mChargedItem;
-	VA uk;
-public:
-	/*VA save() {
-		VA* cp = new VA[8]{ 0 };
-		return SYMCALL(VA, MSSYM_MD5_e02d5851c93a43bfe24a4396ecb87cde, this, cp);
-	}*/
-#if (COMMERCIAL)
-	Json::Value toJson() {
-		VA t = save();
-		Json::Value jv = (*(Tag**)t)->toJson();
-		(*(Tag**)t)->clearAll();
-		*(VA*)t = 0;
-		delete (VA*)t;
-		return jv;
-	}
-	void fromJson(Json::Value& jv) {
-		VA t = Tag::fromJson(jv);
-		SYMCALL(VA, MSSYM_B1QA7fromTagB1AA9ItemStackB2AAA2SAB1QA3AV1B1AE15AEBVCompoundTagB3AAAA1Z, this, *(VA*)t);
-		(*(Tag**)t)->clearAll();
-		*(VA*)t = 0;
-		delete (VA*)t;
-	}
-	void fromTag(VA t) {
-		SYMCALL(VA, MSSYM_B1QA7fromTagB1AA9ItemStackB2AAA2SAB1QA3AV1B1AE15AEBVCompoundTagB3AAAA1Z, this, t);
-	}
-#endif
-	/*bool getFromId(short id, short aux, char count) {
-		memcpy(this, SYM_POINT(void, MSSYM_B1QA5EMPTYB1UA4ITEMB1AA9ItemStackB2AAA32V1B1AA1B), 0x90);
-		bool ret = SYMCALL(bool, MSSYM_B2QUA7setItemB1AE13ItemStackBaseB2AAA4IEAAB1UA2NHB1AA1Z, this, id);
-		mCount = count;
-		mAuxValue = aux;
-		mValid = true;
-		return ret;
-	}*/
-};
-struct ItemStack : ItemStackBase {
-	// 取物品ID
-	short getId() {
-		return SYMCALL(short, "?getId@ItemStackBase@@QEBAFXZ",
-			this);
-	}
-	// 取物品特殊值
-	short getAuxValue() {
-		return SYMCALL(short, "?getAuxValue@ItemStackBase@@QEBAFXZ",
-			this);
-	}
-	// 取物品名称
-	std::string getName() {
-		std::string str;
-		SYMCALL(__int64, "?getName@ItemStackBase@@QEBA?AV?$basic_string@DU?$char_traits@D@std@@V?$allocator@D@2@@std@@XZ",
-			this, &str);
-		return str;
-	}
-	// 取容器内数量
-	int getStackSize() {			// IDA ContainerModel::networkUpdateItem
-		return *((char*)this + 34);
-	}
-	// 判断是否空容器
-	/*bool isNull() {
-		return SYMCALL(bool,
-			MSSYM_B1QA6isNullB1AE13ItemStackBaseB2AAA4QEBAB1UA3NXZ,
-			this);
-	}*/
 };
 struct LevelContainerModel {
 	// 取开容者

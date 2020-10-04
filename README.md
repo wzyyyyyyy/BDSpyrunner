@@ -13,13 +13,13 @@
 执行一段指令
 示例:
 ```py
-mc.runcmd('say hello')
+mc.runcmd('say 你好')
 ```
 ## log(字符串)
 标准输出一段字符串(中文输出用,无中文用print)
 示例:
 ```py
-mc.log('hello')
+mc.log('你好')
 ```
 ## setListener(整数,函数名)
 设置监听器,执行函数<br>
@@ -30,7 +30,7 @@ mc.log('hello')
 [JSR文档](http://game.xiafox.com/jsrdevdoc.htm#reg_t2)
 返回值决定是否拦截（True继续，False拦截）<br>
 * [x] 1-控制台输入指令
-* [ ] 2-控制台指令输出
+* [x] 2-控制台指令输出
 * [x] 3-玩家选择表单
 * [x] 4-玩家使用物品
 * [x] 5-玩家放置方块
@@ -82,6 +82,16 @@ print(mc.getOnLinePlayers())
 设置指令说明
 ```py
 mc.setCommandDescribe('指令','说明')
+```
+## getHands(字符串)
+获取玩家手持
+```py
+print(mc.getHands('a6031970-8ed4-319c-aa45-ac844fd70261'))
+```
+## getPos(字符串,字符串)
+设置指令说明
+```py
+print(mc.getPos('a6031970-8ed4-319c-aa45-ac844fd70261'))
 ```
 ***
 # 使用方法
